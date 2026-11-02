@@ -46,6 +46,7 @@ Full contract: `docs/design.md`.
 ## 5. Needs Ricardo
 | When | What |
 |---|---|
+| Now (one tap) | Set `main` as the default branch: Settings, Branches, switch default to `main`. The repo was empty, so GitHub first made `claude/stride-0.1.0` the default. Claude Code could not do it: the agent proxy blocks repository settings writes. Then delete the old default branch if it is merged. |
 | Before the first release | Run `scripts/make-release-key.sh` once on his own computer. It makes the release key and sets the 4 GitHub settings. Back up the key in the password manager. |
 | First device test | Install the Latest test build on the Pixel 8 Pro, close the PitPat app, turn the pad on, run the checklist in section 8. |
 | First device test | Confirm the max speed the pad reports (shown in Settings, Diagnostics). The app caps the speed slider at it. |
