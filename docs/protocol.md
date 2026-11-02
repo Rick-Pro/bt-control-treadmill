@@ -65,9 +65,11 @@ Captured from Ricardo's pad (PitPat-T01 / HY-BA06B1, idle, belt stopped, imperia
 `PadCapturesTest` and decode to: STOPPED, speed 0, target 0, distance 0.009 km (9 m), steps 0, kcal 0, duration 0,
 firmware 27, max speed 6.0 km/h.
 ```
-56 bytes, inner frame 52 (0x34), with an 18-byte ASCII device id at inner offsets 32 to 49:
+56 bytes, inner frame 52 (0x34), with an 18-byte ASCII device id at inner offsets 32 to 49. The real id is replaced by the
+placeholder `EXAMPLESERIAL0001` and the XOR byte (inner offset 50) is redone, because this repo is public (plan.md D24); every
+other byte is the capture:
 4D 04 01 34 68 34 00 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 CB 1B 82 17 70 00 05 00
-74 4F 68 33 31 36 67 4C 6F 35 42 4B 75 31 33 34 41 00 10 43
+45 58 41 4D 50 4C 45 53 45 52 49 41 4C 30 30 30 31 00 44 43
 
 51 bytes, inner frame 47 (0x2F), no device id:
 4D 04 02 2F 68 2F 00 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 CB 1B 82 17 70 00 05 00

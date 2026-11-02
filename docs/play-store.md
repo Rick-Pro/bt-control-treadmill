@@ -14,10 +14,11 @@ console changes, so go by what it asks.
 - **Release key:** done once, steps in `docs/plan.md` section 5 (`scripts/make-release-key.sh`). Then run the Release
   workflow for `v1.0.0`. It publishes `stride-v1.0.0.aab` (this is the file for Play) and `stride-v1.0.0.apk` (for people
   who install by hand), each with a `.sha256`.
-- **Privacy policy at a public web address.** `docs/privacy.md` says Stride collects nothing. **GitHub Pages is off**, so
-  that file is not on the web yet, and Play needs a URL anyone can open (not a file download, and not behind a login).
-  Before you submit, host it somewhere public: turn on Pages for `/docs` on `main` (Settings, Pages), or put the page on
-  ricardouzcategui.com. If the repo stays private, its GitHub address will not work.
+- **Privacy policy at a public web address.** `docs/privacy.md` says Stride collects nothing, and `docs/privacy.html` is the
+  same text as a page. Once GitHub Pages is on for `/docs` on `main` (Settings, Pages; steps in `docs/plan.md`, Needs
+  Ricardo), the address is **https://rick-pro.github.io/bt-control-treadmill/privacy.html**. Open it in a private window
+  before you submit: Play needs a URL anyone can open (not a file download, and not behind a login). The About screen links
+  to the same address. If Pages is not on yet, that URL shows a 404, so turn it on first.
 - **Screenshots from your own Pixel** (at least 2 phone screenshots), an app icon 512x512 (export `ic_launcher_foreground`
   on the `#0F1419` background) and a feature graphic 1024x500.
 
@@ -44,7 +45,7 @@ The version code goes up with every upload by itself: `major x 1,000,000 + minor
   > calorie and step estimates.
   > No account, no internet, no ads, no tracking. Everything stays on your phone.
   > Stride is an independent app and is not affiliated with or endorsed by PitPat.
-- **Category:** Health & Fitness. **Contact:** your email and https://ricardouzcategui.com. **Privacy policy:** the public URL from step 1.
+- **Category:** Health & Fitness. **Contact:** your email and https://ricardouzcategui.com. **Privacy policy:** https://rick-pro.github.io/bt-control-treadmill/privacy.html (from step 1).
 
 ## 5. App content forms
 - **Data safety:** *Does the app collect or share any of the required user data types?* **No.** Nothing is sent off the
@@ -67,5 +68,6 @@ days in a row** before it can apply for production. As of this writing; check th
 
 ## 7. Production
 After Google grants access: Production, create a release, upload the `.aab`, write release notes from the README What's new
-row, review, and roll out. Keep the README in step with the store listing (no "open source", "free of charge forever" or
-"reviewed" claims that the app does not earn).
+row, review, and roll out. Keep the README in step with the store listing. Stride is open source under the MIT license
+(`LICENSE`), so the listing may say so and link the repo; keep out "free of charge forever", "popular" and "reviewed" claims
+that the app does not earn.

@@ -146,7 +146,11 @@
     <string name="about_credit_notes">Protocol notes from Razzolate99/pitpat-treadmill and sirfergy/HomeAssistantWalkingPad. No code copied.</string>
     <string name="about_credit_libraries">Built with Kotlin, Jetpack Compose and AndroidX (Apache License 2.0).</string>
     <string name="about_credit_acsm">The calorie estimate uses the walking equation of the American College of Sports Medicine.</string>
+    <string name="about_license_title">License</string>
+    <string name="about_license">Stride is open source under the MIT License. Copyright 2026 Ricardo Uzcategui.</string>
+    <string name="about_license_link">Read the license</string>
     <string name="about_notices">Full licenses and notices</string>
+    <string name="about_privacy_policy">Privacy policy</string>
     <string name="settings_save">Save</string>
     <string name="btn_remove">Remove</string>
     <string name="me_title">Me</string>

@@ -3,7 +3,8 @@
 Last updated: 2 November 2026
 
 Stride is an Android app that remotely controls the PitPat walking pad (HY-BA06B1, sold as BA06-B1). **Stride collects
-nothing.** It does not send any information about you or your phone to its developer or to anyone else.
+nothing.** It does not send any information about you or your phone to its developer or to anyone else. Stride is open
+source (MIT license), so you can read the code and check every line of this page.
 
 ## What Stride does not do
 - No account, no sign-in, no email or phone number.
@@ -27,8 +28,8 @@ Stride keeps a few things in its private storage. Only Stride can read them, and
 - **Share.** If you tap Share in History or in the Diagnostics log, Android opens its share sheet and the text goes only to
   the app you pick. The Diagnostics log has connection events and frames. It never contains your profile values or the
   treadmill's Bluetooth address, and it hides the treadmill's own id.
-- **Links.** The About page has links (the developer's site and the project page). They open in your browser, which is
-  then governed by that site's own policy.
+- **Links.** The About page has links (the developer's site, the project page, the licenses and this policy). They open
+  in your browser, which is then governed by that site's own policy.
 
 ## Permissions
 - **Nearby devices (Bluetooth scan and connect):** to find your treadmill and talk to it. Stride declares that it does not
@@ -42,4 +43,5 @@ Stride is a utility for treadmill owners. It is not directed at children and col
 If this policy changes, the new version will replace this page and its date will change.
 
 ## Contact
-Ricardo Uzcategui, https://ricardouzcategui.com
+Ricardo Uzcategui, https://ricardouzcategui.com. You can also open an issue at
+https://github.com/Rick-Pro/bt-control-treadmill/issues

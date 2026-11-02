@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The icon on Android's splash screen: the launcher foreground, shrunk to 80% of the splash icon area. The system
+masks that area to a circle two thirds of its width, and the foreground alone reaches the edge of that circle (its
+belt corners and its top stride mark sit 36 of 108 units from the centre, and the circle's radius is 36 of 108), so
+any rounding would clip it. At 80% it clears the edge with room to spare. The launcher icon is not changed. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_foreground"
+    android:insetLeft="10%"
+    android:insetTop="10%"
+    android:insetRight="10%"
+    android:insetBottom="10%" />

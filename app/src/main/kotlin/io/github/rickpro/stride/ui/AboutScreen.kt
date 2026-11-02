@@ -33,6 +33,8 @@ import io.github.rickpro.stride.ui.theme.StrideColors
 private const val DEVELOPER_URL = "https://ricardouzcategui.com"
 private const val REPO_URL = "https://github.com/Rick-Pro/bt-control-treadmill"
 private const val NOTICES_URL = "https://github.com/Rick-Pro/bt-control-treadmill/blob/main/THIRD_PARTY_NOTICES.md"
+private const val LICENSE_URL = "https://github.com/Rick-Pro/bt-control-treadmill/blob/main/LICENSE"
+private const val PRIVACY_URL = "https://rick-pro.github.io/bt-control-treadmill/privacy.html"
 
 /**
  * What Stride is, who made it, and whose work it stands on. Links open in the browser with ACTION_VIEW, so the app
@@ -88,6 +90,13 @@ fun AboutScreen(versionName: String, onBack: () -> Unit) {
                 )
             }
             LinkText(text = stringResource(R.string.about_notices), url = NOTICES_URL)
+            Section()
+
+            Text(stringResource(R.string.about_license_title), style = MaterialTheme.typography.titleMedium, color = StrideColors.Text)
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.about_license), style = MaterialTheme.typography.bodyMedium, color = StrideColors.Muted)
+            LinkText(text = stringResource(R.string.about_license_link), url = LICENSE_URL)
+            LinkText(text = stringResource(R.string.about_privacy_policy), url = PRIVACY_URL)
         }
     }
 }

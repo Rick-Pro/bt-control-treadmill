@@ -2,9 +2,14 @@
 
 **Your walking pad, one screen.**
 
+One-screen Android remote for PitPat walking pads. No account, no internet, no ads.
+
+[![CI](https://github.com/Rick-Pro/bt-control-treadmill/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Rick-Pro/bt-control-treadmill/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 Start, pause, stop, faster, slower. Time, distance, speed, calories, steps. Every walk saved on the phone. That is the whole app.
 
-Landing page: https://rick-pro.github.io/bt-control-treadmill/ (GitHub Pages from `docs/`, turn it on once in the repo settings).
+Landing page: https://rick-pro.github.io/bt-control-treadmill/ (GitHub Pages, served from `docs/` on `main`). Privacy policy: https://rick-pro.github.io/bt-control-treadmill/privacy.html
 
 ## Why Stride
 
@@ -15,19 +20,28 @@ The PitPat app that comes with the pad wants an account, plays sounds, shows a 3
 - **Honest about the pad.** If the Bluetooth link drops, the belt keeps running at the same speed. Stride buzzes, says so, and reconnects. The pad's own remote keeps working.
 - **No account, no internet, no ads, no telemetry.** The app has no internet permission at all. The build fails if it ever asks for one.
 
-## Compatibility
+## Compatible pads
 
-Made for Ricardo's PitPat **HY-BA06B1** (it advertises as `BA06-73F6`), which speaks the PitPat Bluetooth LE protocol on service `FBA0`. Other PitPat-T01 family pads with the same service (DeerRun, Superun, PitPat-T01) are likely to work.
+Stride is for walking pads that use the **PitPat app**. Brands that sell them include **PitPat**, **Superun** and **DeerRun**.
 
-Stride looks at what the pad offers and uses the first of three layouts it finds: `FBA0` ("PitPat"), `FF01`/`FF02` with a 4-byte header ("PitPat wrapped"), or `FFF1`/`FFF2` ("PitPat FFF"). The first has been verified on real pads by other projects. The second is what Ricardo's HY-BA06B1 offers: Stride connects to it, reads its status, starts, changes speed and stops the belt (all tried on the pad). The third is written from published protocol work and has not been tried on a pad. Settings shows which layout is in use, and the Diagnostics log lists every service the pad offers. The protocol is in `docs/protocol.md`.
+**Rule of thumb:** if the pad's manual says to download the PitPat app, Stride should work with it.
 
-Works on Android 13 or newer. Tested first on a Google Pixel 8 Pro.
+| Pad | Status |
+|---|---|
+| PitPat **HY-BA06B1** (sold as BA06-B1, shows as `PitPat-T01` over Bluetooth) | **Tested** on a Google Pixel 8 Pro: connect, start, speed, stop and live status |
+| Other PitPat, Superun and DeerRun pads | Expected to work, **not tested** by us. [Tell us how it went](https://github.com/Rick-Pro/bt-control-treadmill/issues/new/choose) |
+
+Stride finds a pad by its Bluetooth name (it starts with `PitPat` or `BA0`) or by the Bluetooth service it advertises. If **Find** never lists your pad, open an issue with the pad's model and the name Android's Bluetooth settings shows for it.
+
+**How it talks to the pad.** The HY-BA06B1 speaks the PitPat Bluetooth LE protocol. Stride looks at what the pad offers and uses the first of three layouts it finds: `FBA0` ("PitPat"), `FF01`/`FF02` with a 4-byte header ("PitPat wrapped"), or `FFF1`/`FFF2` ("PitPat FFF"). The first has been verified on real pads by other projects. The second is what Ricardo's HY-BA06B1 offers: Stride connects to it, reads its status, starts, changes speed and stops the belt (all tried on the pad). The third is written from published protocol work and has not been tried on a pad. Settings shows which layout is in use, and the Diagnostics log lists every service the pad offers. The protocol is in `docs/protocol.md`.
+
+Works on Android 13 or newer. Tested on a Google Pixel 8 Pro.
 
 ## Install
 
 Stride is not on Google Play, so you install the file yourself. No root, no account.
 
-1. **Download.** On the phone, open the [latest release](https://github.com/Rick-Pro/bt-control-treadmill/releases) and tap `stride-vX.Y.Z.apk`. While the repo is private, sign in to GitHub in the browser first. If the browser warns that the file can harm your device, tap Download anyway.
+1. **Download.** On the phone, open the [latest release](https://github.com/Rick-Pro/bt-control-treadmill/releases) and tap `stride-vX.Y.Z.apk`. If the browser warns that the file can harm your device, tap Download anyway.
 2. **Open it.** Tap Open when the download finishes, or open Files, then Downloads, and tap the file.
 3. **Allow installs from your browser.** Android says your browser is not allowed to install unknown apps. Tap Settings, turn on Allow from this source, and go back. You can turn it off again later in Settings, Apps, Special app access, Install unknown apps.
 4. **Let Google Play Protect scan it.** Play Protect has not seen Stride before, so it says App scan recommended. Tap Scan app. It takes a few seconds.
@@ -49,7 +63,7 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 1. Close the PitPat app (swipe it away or force stop it). The pad accepts one connection at a time, and while PitPat holds it the pad is invisible to everything else.
 2. Turn the pad on. Its display shows `0:00`.
 3. Open Stride and tap **Find**. Allow Nearby devices when Android asks (that is the Bluetooth permission; Stride never uses location).
-4. The pad shows up within 15 seconds as `BA06-73F6`. Tap it. If it is the only pad around, Stride picks it on its own.
+4. The pad shows up within 15 seconds under its Bluetooth name (for example `BA06-73F6` or `PitPat-T01`). Tap it. If it is the only pad around, Stride picks it on its own.
 5. The status line turns green: connected. Done. From now on every launch reconnects by itself.
 
 ## What it does
@@ -65,7 +79,7 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 - Four preset chips (1.0, 1.5, 2.0, 2.5 mph by default; change them in Settings).
 - A small row: units, History, Settings.
 
-When the app opens, Android's own splash screen shows the Stride icon on the app's dark background until the first screen is ready. It is the system splash from the theme alone: no library, no extra screen and no added wait.
+When the app opens from scratch (a cold start, for example after swiping it out of Recents), Android's own splash screen shows the Stride icon on the app's dark background until the first screen is ready. It is the system splash from the theme alone: no library, no extra screen and no added wait, and on a fast phone it is gone in a fraction of a second. Opening Stride while it is still in memory shows no splash; that is how Android works.
 
 The screen stays on while the belt moves. Buttons that cannot work right now say why (not connected, no data yet).
 
@@ -75,7 +89,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 
 **Me (in Settings, optional).** Sex, height, weight and, if you like, age, in the units you picked. They stay in this app's private storage on the phone: no account, no network, no backup. They are used for three things only: the calorie estimate (the standard walking equation from the American College of Sports Medicine: MET from speed, then MET x kg x hours; it is an estimate, not a measurement); the step length for the step estimate (0.413 x height for women, 0.415 x height for men, in between for other); and your weight, sent to the pad in each command so the pad's own calorie count has it. The weight is hidden in the Diagnostics log. Remove clears everything.
 
-**Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), and **About**: the version, which pad Stride is for, the developer (a tap opens ricardouzcategui.com in the browser), credits for the work Stride stands on, and the GitHub project. Links open in the browser; Stride itself still has no internet permission.
+**Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), and **About**: the version, which pad Stride is for, the developer (a tap opens ricardouzcategui.com in the browser), credits for the work Stride stands on, the GitHub project, the MIT license line and the privacy policy. Links open in the browser; Stride itself still has no internet permission.
 
 ## What it will not do
 
@@ -91,6 +105,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 - No ads, no telemetry, no analytics, no crash reporting. The library list is AndroidX and Kotlin, enforced by CI against `config/allowed-dependency-groups.txt`.
 - Everything stays on the phone: the pad's address in the app's private preferences, walks in one private file. Uninstalling removes all of it.
 - You decide what leaves. Share (CSV) and the Diagnostics log only go somewhere when you tap Share.
+- The full policy is short: [privacy.html](https://rick-pro.github.io/bt-control-treadmill/privacy.html) (the same text is in `docs/privacy.md`).
 
 ## Troubleshooting
 
@@ -105,7 +120,14 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 
 ## Report a bug
 
-Settings, Diagnostics, Share, and paste it into a [new issue](https://github.com/Rick-Pro/bt-control-treadmill/issues/new). The log has connection events and frames; it never has the pad's Bluetooth address.
+Open a [new issue](https://github.com/Rick-Pro/bt-control-treadmill/issues/new/choose) with the Bug report form. It asks for the pad model, its Bluetooth name and the Diagnostics log: Settings, Diagnostics log, Share, then paste. The log has connection events and frames; it never has the pad's Bluetooth address, your weight or the pad's own id. Issues are public, so read the log before you post it.
+
+## Support
+
+- **Something broke, or you have a different pad?** Use the Bug report form above. A report from a pad we have not tried is the most useful thing you can send.
+- **Like it?** Star the repo and tell another walker.
+- **Chip in.** The Sponsor button on the repo page goes to [ricardouzcategui.com](https://ricardouzcategui.com) for now. Stride is free to use, with no ads and nothing to buy inside the app.
+- **Help build it.** See [CONTRIBUTING.md](CONTRIBUTING.md): the rules are short.
 
 ## Repo map
 
@@ -116,7 +138,7 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `docs/design.md` | What Stride is and the contract between `core/` and `app/` |
 | `docs/plan.md` | Scope, stack, module map, decision log, what only Ricardo can do, first device run checklist |
 | `docs/play-store.md` | One page: putting Stride on Google Play (account, Play App Signing, listing, data safety form, the closed test) |
-| `docs/privacy.md` | The privacy policy: Stride collects nothing. Must be hosted at a public address before the Play submission |
+| `docs/privacy.md`, `docs/privacy.html` | The privacy policy: Stride collects nothing. Same text twice; the page is https://rick-pro.github.io/bt-control-treadmill/privacy.html, which the About screen and the Play listing link to |
 | `docs/protocol.md` | The PitPat BLE protocol with the exact frames and their sources |
 | `docs/index.html` | The landing page (GitHub Pages from `docs/`) |
 | `core/` | Pure Kotlin logic with JUnit 4 tests, no Android imports: `protocol` (frames, the three pad layouts and how one is picked, the wrapped-pad link), `control` (STOP-first queue, safety rules, step estimate), `units` (mph and miles), `history` (walk record, walk detection, JSON lines, totals) |
@@ -124,12 +146,14 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradlew` | Gradle build. All versions are in `gradle/libs.versions.toml` |
 | `VERSION` | The next release version. The Release workflow refuses a tag that does not match |
 | `gradle.properties` | Gradle settings: JVM memory, build cache, parallel builds, AndroidX, Kotlin code style |
+| `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/` | The Sponsor button's target (the developer's site for now) and the Bug report form |
 | `.github/workflows/` | `ci.yml`: core tests, then the app build, lint, allow-lists and APK size, on every PR and push to main. `test-build.yml`: the rolling Latest test build after each push to main. `release.yml`: the manual Release (Actions, Release, Run workflow, vX.Y.Z), see Releasing a new version |
 | `config/` | Allow-lists CI enforces: the permissions the app may ask for and the dependency groups it may ship |
 | `scripts/` | `ci-*.sh`: CI helpers (Gradle error summary, permission, dependency, APK size and debug signer checks). `core-check-offline.sh`: compiles and tests `core/` without network, with the Kotlin compiler from a local Gradle install. `make-release-key.sh`: makes the release key once and sets the GitHub secrets. `release-preflight.sh`, `release-sign.sh`, `release-sign-aab.sh`: the Release workflow's checks and signing of the APK and the App Bundle |
 | `.gitignore` | Keeps build output, signing keys (all but the public `app/debug.keystore`), `.env*` files and editor or OS junk out of git |
 | `AGENTS.md`, `CLAUDE.md` | Rules for agents working here |
-| `LICENSE`, `THIRD_PARTY_NOTICES.md` | All rights reserved for now; the MIT notice for the ported protocol code |
+| `LICENSE`, `THIRD_PARTY_NOTICES.md` | The MIT license for Stride; the notices for the work it is built on |
+| `CONTRIBUTING.md` | How to help: issues, pull requests, the core tests, the allow-lists, protocol captures |
 
 Any PR that adds, moves or removes a folder or key file updates this table.
 
@@ -153,7 +177,7 @@ The exact steps for the key are in `docs/plan.md`, section 5. Playbook: mission-
 
 | Version | What changed |
 |---|---|
-| 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. |
+| 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. Open source under the MIT license, with a License line and a privacy policy link on the About screen, a CONTRIBUTING guide, a Bug report form and a Compatible pads list. |
 
 ## Credits
 
@@ -168,4 +192,4 @@ Built by Ricardo Uzcategui, a three-time founder based in San Francisco. Ricardo
 
 ## License
 
-All rights reserved for now. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
+MIT, copyright 2026 Ricardo Uzcategui. See [`LICENSE`](LICENSE). The ported protocol code keeps its own MIT notices, and the other work Stride follows is listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

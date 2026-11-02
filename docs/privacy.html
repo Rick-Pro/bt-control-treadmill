@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stride privacy policy</title>
+<meta name="description" content="Stride collects nothing. No account, no internet permission, no ads, no analytics. What stays on your phone and what leaves it only when you choose.">
+<!-- The text below is docs/privacy.md. Keep the two in step: change both in the same PR. -->
+<style>
+  :root {
+    --bg: #0f1419; --surface: #171d24; --line: #232b35; --text: #e6edf3; --muted: #909dab;
+    --green: #3fb950;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--green); text-decoration: none; overflow-wrap: anywhere; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+  header { padding: 28px 0 8px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; color: var(--text); }
+  .brand .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(63,185,80,.18); }
+  nav a { color: var(--muted); margin-left: 18px; font-size: 15px; }
+  main { padding: 20px 0 12px; }
+  h1 { font-size: 34px; line-height: 1.15; margin: 8px 0 10px; letter-spacing: -0.4px; }
+  h2 { font-size: 21px; margin: 30px 0 8px; padding-top: 22px; border-top: 1px solid var(--line); }
+  p { margin: 0 0 14px; }
+  .updated { color: var(--muted); font-size: 14px; }
+  ul { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 8px; }
+  strong { font-weight: 650; }
+  code { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 14px; }
+  footer { padding: 28px 0 44px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./"><span class="dot"></span>Stride</a>
+    <nav><a href="./">Home</a><a href="https://github.com/Rick-Pro/bt-control-treadmill">GitHub</a></nav>
+  </header>
+  <main>
+    <h1>Stride privacy policy</h1>
+    <p class="updated">Last updated: 2 November 2026</p>
+    <p>Stride is an Android app that remotely controls the PitPat walking pad (HY-BA06B1, sold as BA06-B1). <strong>Stride collects nothing.</strong> It does not send any information about you or your phone to its developer or to anyone else. Stride is open source (MIT license), so you can read the code and check every line of this page.</p>
+    <h2>What Stride does not do</h2>
+    <ul>
+      <li>No account, no sign-in, no email or phone number.</li>
+      <li>No internet access. The app does not hold the Android internet permission, so it cannot send data anywhere.</li>
+      <li>No ads, no analytics, no crash reporting, no trackers, and no third-party analytics or advertising code.</li>
+      <li>No location, contacts, photos, files, camera or microphone.</li>
+      <li>No cloud backup. Android backup is switched off for the app.</li>
+    </ul>
+    <h2>What stays on your phone</h2>
+    <p>Stride keeps a few things in its private storage. Only Stride can read them, and uninstalling Stride deletes them.</p>
+    <ul>
+      <li><strong>The treadmill you picked:</strong> its name and Bluetooth address, so the app can reconnect.</li>
+      <li><strong>Your walks:</strong> date, time, distance, speed and the calories and steps shown for each.</li>
+      <li><strong>Settings:</strong> units, presets, and whether the screen stays on.</li>
+      <li><strong>Your profile, only if you fill it in:</strong> sex, height, weight and, if you choose, age. It is used on the phone to estimate calories and steps, and your weight is sent to the treadmill over Bluetooth with each command so the treadmill's own calorie count can use it. You can remove it at any time in Settings.</li>
+    </ul>
+    <h2>What leaves the phone, and only when you choose</h2>
+    <ul>
+      <li><strong>Bluetooth to your treadmill.</strong> Stride talks to the treadmill over Bluetooth Low Energy: speed commands out, status (speed, distance, time) back. That is a direct link between your phone and your treadmill.</li>
+      <li><strong>Share.</strong> If you tap Share in History or in the Diagnostics log, Android opens its share sheet and the text goes only to the app you pick. The Diagnostics log has connection events and frames. It never contains your profile values or the treadmill's Bluetooth address, and it hides the treadmill's own id.</li>
+      <li><strong>Links.</strong> The About page has links (the developer's site, the project page, the licenses and this policy). They open in your browser, which is then governed by that site's own policy.</li>
+    </ul>
+    <h2>Permissions</h2>
+    <ul>
+      <li><strong>Nearby devices (Bluetooth scan and connect):</strong> to find your treadmill and talk to it. Stride declares that it does not use Bluetooth to work out your location.</li>
+      <li><strong>Vibrate:</strong> to buzz the phone if the connection to a moving belt is lost.</li>
+    </ul>
+    <h2>Children</h2>
+    <p>Stride is a utility for treadmill owners. It is not directed at children and collects no information from anyone.</p>
+    <h2>Changes</h2>
+    <p>If this policy changes, the new version will replace this page and its date will change.</p>
+    <h2>Contact</h2>
+    <p>Ricardo Uzcategui, <a href="https://ricardouzcategui.com">https://ricardouzcategui.com</a>. You can also open an issue at <a href="https://github.com/Rick-Pro/bt-control-treadmill/issues">https://github.com/Rick-Pro/bt-control-treadmill/issues</a></p>
+  </main>
+  <footer>
+    Built by <a href="https://ricardouzcategui.com">Ricardo Uzcategui</a>. Stride is open source under the <a href="https://github.com/Rick-Pro/bt-control-treadmill/blob/main/LICENSE">MIT License</a>.
+  </footer>
+</div>
+</body>
+</html>
