@@ -65,7 +65,9 @@ class Settings(context: Context) {
                 putString(KEY_SEX, value.sex.name)
                 putString(KEY_HEIGHT_CM, value.heightCm.toString())
                 putString(KEY_WEIGHT_KG, value.weightKg.toString())
-                if (value.ageYears != null) putInt(KEY_AGE, value.ageYears) else remove(KEY_AGE)
+                // A local copy: Kotlin cannot smart cast a property of a class from another module (core).
+                val age = value.ageYears
+                if (age != null) putInt(KEY_AGE, age) else remove(KEY_AGE)
             }
         }
 
