@@ -127,7 +127,7 @@ Open a [new issue](https://github.com/Rick-Pro/stride-android/issues/new/choose)
 
 - **Something broke, or you have a different pad?** Use the Bug report form above. A report from a pad we have not tried is the most useful thing you can send.
 - **Like it?** Star the repo and tell another walker.
-- **Chip in.** [Buy Me a Coffee](https://buymeacoffee.com/ricardouzcategui), or a one-time card payment through [Stripe](https://buy.stripe.com/6oUbJ05fZ39HcVwfRX9IQ00). Both are also behind the repo's Sponsor button and the **Support Stride** row on the About screen. Stride is free to use, with no ads and nothing to buy inside the app.
+- **Chip in.** [GitHub Sponsors](https://github.com/sponsors/Rick-Pro) first, or [Buy Me a Coffee](https://buymeacoffee.com/ricardouzcategui), or a one-time card payment through [Stripe](https://buy.stripe.com/6oUbJ05fZ39HcVwfRX9IQ00). All three are behind the repo's Sponsor button, and the **Support Stride** row on the About screen opens Buy Me a Coffee. Stride is free to use, with no ads and nothing to buy inside the app.
 - **Help build it.** See [CONTRIBUTING.md](CONTRIBUTING.md): the rules are short.
 
 ## Repo map
@@ -147,7 +147,7 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradlew` | Gradle build. All versions are in `gradle/libs.versions.toml` |
 | `VERSION` | The next release version. The Release workflow refuses a tag that does not match |
 | `gradle.properties` | Gradle settings: JVM memory, build cache, parallel builds, AndroidX, Kotlin code style |
-| `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/` | The Sponsor button's targets (Buy Me a Coffee and a Stripe link) and the Bug report form |
+| `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/` | The Sponsor button's targets (GitHub Sponsors, Buy Me a Coffee and a Stripe link) and the Bug report form |
 | `.github/workflows/` | `ci.yml`: core tests, then the app build, lint, allow-lists and APK size, on every PR and push to main. `test-build.yml`: the rolling Latest test build after each push to main. `release.yml`: the manual Release (Actions, Release, Run workflow, vX.Y.Z), see Releasing a new version |
 | `config/` | Allow-lists CI enforces: the permissions the app may ask for and the dependency groups it may ship |
 | `scripts/` | `ci-*.sh`: CI helpers (Gradle error summary, permission, dependency, APK size and debug signer checks). `core-check-offline.sh`: compiles and tests `core/` without network, with the Kotlin compiler from a local Gradle install. `make-release-key.sh`: makes the release key once and sets the GitHub secrets. `release-preflight.sh`, `release-sign.sh`, `release-sign-aab.sh`: the Release workflow's checks and signing of the APK and the App Bundle |
@@ -178,7 +178,7 @@ The exact steps for the key are in `docs/plan.md`, section 5. Playbook: mission-
 
 | Version | What changed |
 |---|---|
-| 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. Open source under the MIT license, with a License line and a privacy policy link on the About screen, a CONTRIBUTING guide, a Bug report form, a Compatible pads list, and Buy Me a Coffee and Stripe links for anyone who wants to chip in. |
+| 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. Open source under the MIT license, with a License line and a privacy policy link on the About screen, a CONTRIBUTING guide, a Bug report form, a Compatible pads list, and GitHub Sponsors, Buy Me a Coffee and Stripe links for anyone who wants to chip in. |
 
 ## Credits
 
