@@ -4,8 +4,12 @@ import java.util.Locale
 
 /**
  * The 4-byte header some PitPat pads put in front of every frame, in both directions:
- * `4D 00 <counter> <length>`, then the normal frame. The counter is one byte that goes up by one with every write
- * (heartbeats included) and wraps after 255. The length is the size of the frame that follows.
+ * `4D <direction> <counter> <length>`, then the normal frame.
+ * - direction: `00` on what Stride writes, `04` on what the pad notifies (seen in captures from a HY-BA06B1).
+ *   Stride accepts any value when reading.
+ * - counter: one byte. Stride's own goes up by one with every write (heartbeats included) and wraps after 255.
+ *   The pad counts its notifications separately; the two are never compared.
+ * - length: the size of the frame that follows (52 or 47 for the two status frames captured).
  *
  * Protocol facts from azmke/pitpat-treadmill-control (MIT), see THIRD_PARTY_NOTICES.md and docs/protocol.md.
  */
@@ -13,24 +17,33 @@ object PitPatWrapper {
     const val MAGIC = 0x4D
     const val HEADER_SIZE = 4
 
+    /** Second header byte on writes from Stride to the pad. */
+    const val DIRECTION_TO_PAD = 0x00
+
+    /** Second header byte on notifications from the pad. */
+    const val DIRECTION_FROM_PAD = 0x04
+
     fun wrap(counter: Int, frame: ByteArray): ByteArray {
         require(frame.size <= 0xFF) { "a frame is at most 255 bytes" }
         val out = ByteArray(HEADER_SIZE + frame.size)
         out[0] = MAGIC.toByte()
-        out[1] = 0x00
+        out[1] = DIRECTION_TO_PAD.toByte()
         out[2] = counter.toByte()
         out[3] = frame.size.toByte()
         frame.copyInto(out, HEADER_SIZE)
         return out
     }
 
-    /** The frame inside a wrapped notification, or null if [data] does not start with the header. */
-    fun unwrap(data: ByteArray): ByteArray? =
-        if (data.size > HEADER_SIZE && data[0] == MAGIC.toByte() && data[1] == 0.toByte()) {
-            data.copyOfRange(HEADER_SIZE, data.size)
-        } else {
-            null
-        }
+    /**
+     * The frame inside a wrapped notification: bytes 4 up to 4 + the length in byte 3, or fewer if the notification
+     * is the first piece of a split frame. Null if [data] does not start with the magic byte `4D`. The direction
+     * and counter bytes are not looked at.
+     */
+    fun unwrap(data: ByteArray): ByteArray? {
+        if (data.size <= HEADER_SIZE || data[0] != MAGIC.toByte()) return null
+        val length = data[3].toInt() and 0xFF
+        return data.copyOfRange(HEADER_SIZE, minOf(data.size, HEADER_SIZE + length))
+    }
 }
 
 /**

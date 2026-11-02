@@ -19,7 +19,7 @@ The PitPat app that comes with the pad wants an account, plays sounds, shows a 3
 
 Made for Ricardo's PitPat **HY-BA06B1** (it advertises as `BA06-73F6`), which speaks the PitPat Bluetooth LE protocol on service `FBA0`. Other PitPat-T01 family pads with the same service (DeerRun, Superun, PitPat-T01) are likely to work.
 
-Stride looks at what the pad offers and uses the first of three layouts it finds: `FBA0` ("PitPat"), `FF01`/`FF02` with a 4-byte header ("PitPat wrapped"), or `FFF1`/`FFF2` ("PitPat FFF"). Only the first has been verified on real pads, by other projects. The other two are written from published protocol work and have not been tried on a pad yet. Settings shows which layout is in use, and the Diagnostics log lists every service the pad offers. The protocol is in `docs/protocol.md`.
+Stride looks at what the pad offers and uses the first of three layouts it finds: `FBA0` ("PitPat"), `FF01`/`FF02` with a 4-byte header ("PitPat wrapped"), or `FFF1`/`FFF2` ("PitPat FFF"). The first has been verified on real pads by other projects. The second is what Ricardo's HY-BA06B1 offers: Stride connects to it and reads its status, but starting and stopping the belt over it are still being tested. The third is written from published protocol work and has not been tried on a pad. Settings shows which layout is in use, and the Diagnostics log lists every service the pad offers. The protocol is in `docs/protocol.md`.
 
 Works on Android 13 or newer. Tested first on a Google Pixel 8 Pro.
 
@@ -87,6 +87,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 ## Troubleshooting
 
 - **Find shows nothing.** The PitPat app is probably still connected: force stop it. Make sure the pad is on and Bluetooth is on. Stand within a few metres.
+- **The pad holds one connection.** While Stride (or the PitPat app) is connected, nothing else can find the pad. Tap the treadmill's name at the top of the main screen: Disconnect lets go, Reconnect connects again, Find a treadmill scans again, Forget treadmill starts from scratch.
 - **"This device does not speak the PitPat protocol."** The pad offers none of the three layouts. Open Settings, Diagnostics, tap Share, and send it in a bug report: the log lists every service and characteristic the pad offers.
 - **Connected, but Start does nothing and says "no data yet".** The pad has not sent a status frame in the last 3 seconds. Wait a moment; if it stays, tap Reconnect in the banner.
 - **The belt kept running after the phone lost the link.** That is the pad: it keeps the last speed when the link drops. Use the physical remote. Stride reconnects on its own and will show the walk when the belt stops.

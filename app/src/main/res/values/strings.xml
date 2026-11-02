@@ -7,6 +7,9 @@
     <string name="link_connecting">Connecting</string>
     <string name="link_connected">Connected</string>
     <string name="link_reconnecting">Reconnecting</string>
+    <string name="link_reconnecting_attempt">Reconnecting, attempt %1$d</string>
+    <string name="link_disconnected_by_user">Disconnected by you</string>
+    <string name="link_last_problem">Last problem: %1$s</string>
     <string name="link_bluetooth_off">Bluetooth is off</string>
 
     <!-- Belt states -->
@@ -42,12 +45,21 @@
     <string name="btn_close">Close</string>
     <string name="btn_clear">Clear</string>
     <string name="btn_forget">Forget treadmill</string>
+    <string name="btn_disconnect">Disconnect</string>
+    <string name="btn_find_treadmill">Find a treadmill</string>
+    <string name="menu_connection">Connection menu</string>
+    <string name="confirm_forget_title">Forget this treadmill?</string>
+    <string name="confirm_forget_body">Stride forgets %1$s and goes back to setup.</string>
+    <string name="confirm_this_treadmill">this treadmill</string>
+    <string name="confirm_moving_title">The belt is moving</string>
+    <string name="confirm_moving_body">If Stride lets go now, the belt keeps running at the same speed and only the treadmill\'s own remote can stop it. Stop the belt first if you can.</string>
     <string name="unit_mph">mph</string>
     <string name="unit_km">km</string>
     <string name="hint_no_data">Waiting for the treadmill</string>
 
     <!-- Banners and alerts -->
     <string name="banner_link_lost">Connection lost. The belt keeps its speed.</string>
+    <string name="banner_disconnected">Disconnected. Tap Reconnect to control the treadmill again.</string>
     <string name="banner_permission">Stride needs the Nearby devices permission to see the treadmill.</string>
     <string name="alert_lost_moving_title">Connection lost while walking</string>
     <string name="alert_lost_moving_body">The belt keeps running at the same speed. Stride is reconnecting. If it does not come back, stop with the treadmill\'s own remote.</string>

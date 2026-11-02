@@ -33,6 +33,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.cancelAndJoin
@@ -49,6 +50,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -102,6 +104,10 @@ class TreadmillManager(
         val alert: Alert? = null,
         /** Name of the PitPat transport in use (or last used), for Settings; null until a pad has connected. */
         val transport: String? = null,
+        /** The last connection problem in plain words, or null. Cleared when a connection succeeds. */
+        val lastError: String? = null,
+        /** The user chose Disconnect: nothing reconnects on its own until Reconnect (or a new treadmill) is chosen. */
+        val disconnectedByUser: Boolean = false,
     ) {
         val isActive: Boolean get() = link == Link.CONNECTING || link == Link.CONNECTED || link == Link.RECONNECTING
         val isConnected: Boolean get() = link == Link.CONNECTED
@@ -111,7 +117,8 @@ class TreadmillManager(
     private val adapter: BluetoothAdapter? = context.getSystemService(BluetoothManager::class.java)?.adapter
     private val bleThread = HandlerThread("stride-ble").apply { start() }
     private val handler = Handler(bleThread.looper)
-    private val scope = CoroutineScope(SupervisorJob() + handler.asCoroutineDispatcher())
+    private val bleDispatcher = handler.asCoroutineDispatcher()
+    private val scope = CoroutineScope(SupervisorJob() + bleDispatcher)
 
     // Only touched on the Bluetooth thread.
     private val controller = SessionController(protocol, settings.targetKmh)
@@ -164,13 +171,14 @@ class TreadmillManager(
     /** Remembers [address] as the treadmill and connects to it. */
     fun connect(address: String, name: String?) = onBle {
         settings.saveDevice(address, name)
-        _state.update { it.copy(deviceName = name, alert = null) }
+        _state.update { it.copy(deviceName = name, alert = null, disconnectedByUser = false, lastError = null) }
         startSession()
     }
 
     /** The app came to the foreground: reconnect to the remembered treadmill if needed. */
     fun onForeground() = onBle {
         _state.update { it.copy(bluetoothOn = adapter?.isEnabled == true) }
+        if (_state.value.disconnectedByUser) return@onBle // the user closed the link: only Reconnect opens it again
         if (session?.isActive != true && settings.deviceAddress != null) startSession()
     }
 
@@ -192,12 +200,34 @@ class TreadmillManager(
         }
     }
 
-    fun reconnect() = onBle { if (settings.deviceAddress != null) startSession() }
+    fun reconnect() = onBle {
+        if (settings.deviceAddress == null) return@onBle
+        _state.update { it.copy(disconnectedByUser = false, lastError = null) }
+        startSession()
+    }
+
+    /** Closes the link and keeps it closed: no retries, no reconnect on foreground, until [reconnect] or [connect]. */
+    fun disconnect() = onBle { holdOff() }
+
+    /**
+     * Same as [disconnect], but returns only once the GATT link is closed. Wait for this before scanning: the pad
+     * accepts one connection at a time and does not advertise while it holds one.
+     */
+    suspend fun disconnectAndWait() = withContext(bleDispatcher) { holdOff() }
+
+    private suspend fun holdOff() {
+        if (settings.deviceAddress == null) return
+        stopSession() // returns after the session's GATT link is closed
+        _state.update { it.copy(disconnectedByUser = true, lastError = null) }
+        log.add("Disconnected by you. Not reconnecting until you tap Reconnect")
+    }
 
     fun forget() = onBle {
         stopSession()
         settings.forgetDevice()
-        _state.update { it.copy(link = Link.NO_DEVICE, deviceName = null, transport = null) }
+        _state.update {
+            it.copy(link = Link.NO_DEVICE, deviceName = null, transport = null, disconnectedByUser = false, lastError = null)
+        }
     }
 
     fun startOrPause() = onBle { handle(controller.startOrPause(isConnected(), now())) }
@@ -294,15 +324,22 @@ class TreadmillManager(
             } catch (e: GattConnection.IncompatibleDeviceException) {
                 log.add("!! Not a supported treadmill: ${e.message}")
                 _messages.tryEmit(Message.INCOMPATIBLE)
-                _state.update { it.copy(link = Link.DISCONNECTED, attempt = 0) }
+                _state.update {
+                    it.copy(link = Link.DISCONNECTED, attempt = 0, lastError = "This device does not offer a PitPat connection")
+                }
                 return
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                log.add("!! Could not connect: ${e.message ?: e.javaClass.simpleName}")
+                val reason = plainReason(e)
+                log.add("!! Could not connect: $reason")
+                _state.update { it.copy(lastError = reason) }
             } finally {
-                connection?.close()
-                if (linkWasUp) onLinkDown(byUser = !currentCoroutineContext().isActive)
+                val cancelled = !currentCoroutineContext().isActive
+                if (linkWasUp) onLinkDown(byUser = cancelled)
+                // Wait until Android confirms the link is down: the pad takes one connection at a time. Last on
+                // purpose, because leaving a withContext of a cancelled coroutine can throw.
+                withContext(NonCancellable) { connection?.closeAndWait() }
             }
             attempt++
             // Not connected any more from this moment: STOP must warn instead of queuing silently.
@@ -316,6 +353,7 @@ class TreadmillManager(
 
         override fun onDisconnected(status: Int) {
             log.add("!! Connection lost (${GattConnection.describe(status)})")
+            _state.update { it.copy(lastError = "Connection lost (${GattConnection.describe(status)})") }
             linkLost?.complete(Unit)
         }
     }
@@ -334,7 +372,10 @@ class TreadmillManager(
                 "${if (variant.heartbeatPerNotification) "heartbeat" else "keep-alive"} ${if (settings.keepAliveEnabled) "on" else "off"})",
         )
         _state.update {
-            it.copy(link = Link.CONNECTED, attempt = 0, alert = if (wasLost) null else it.alert, transport = variant.displayName)
+            it.copy(
+                link = Link.CONNECTED, attempt = 0, alert = if (wasLost) null else it.alert,
+                transport = variant.displayName, lastError = null,
+            )
         }
         if (wasLost) _messages.tryEmit(Message.RECONNECTED)
     }
@@ -492,11 +533,16 @@ class TreadmillManager(
             val silentMs = now - lastDataAtMs
             if (silentMs > WATCHDOG_MS) {
                 log.add("!! No data from the treadmill for ${silentMs / 1000} s: restarting the connection")
+                _state.update { it.copy(lastError = "No data from the treadmill for ${silentMs / 1000} seconds") }
                 lost.complete(Unit)
                 return
             }
         }
     }
+
+    /** A connection exception as one short sentence for the status line: capital letter, no trailing full stop. */
+    private fun plainReason(e: Exception): String =
+        (e.message ?: e.javaClass.simpleName).trim().trimEnd('.').replaceFirstChar { it.uppercaseChar() }
 
     /** Keeps the diagnostics log readable: frames are logged when something but the counters changes. */
     private class IncomingLog {
@@ -536,9 +582,9 @@ class TreadmillManager(
                 RunState.PAUSED -> "paused"
             }
             return String.format(
-                Locale.ROOT, "%s v=%.2f target=%.2f d=%.3f t=%d steps=%d kcal=%d max=%s",
+                Locale.ROOT, "%s v=%.2f target=%.2f d=%.3f t=%d steps=%d kcal=%d max=%s fw=%d",
                 state, s.speedKmh, s.targetSpeedKmh, s.distanceKm, s.durationSeconds, s.steps, s.kcal,
-                s.maxSpeedKmh?.toString() ?: "-",
+                s.maxSpeedKmh?.toString() ?: "-", s.firmware,
             )
         }
     }

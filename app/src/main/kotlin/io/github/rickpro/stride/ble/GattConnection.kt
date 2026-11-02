@@ -64,6 +64,7 @@ class GattConnection(
     private var commandCharacteristic: BluetoothGattCharacteristic? = null
     private var writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
     private var linkUp: CompletableDeferred<Unit>? = null
+    private var disconnected: CompletableDeferred<Unit>? = null
     private val mtuOp = Operation()
     private val discoveryOp = Operation()
     private val descriptorOp = Operation()
@@ -143,6 +144,33 @@ class GattConnection(
         }
     }
 
+    /**
+     * Like [close], but waits (at most [DISCONNECT_TIMEOUT_MS]) for Android to report the link down before the handle
+     * is released. The pad accepts one connection at a time, so this is what to use whenever something else, such
+     * as a scan or a new connection, needs to find it free. Call it from the Bluetooth thread.
+     */
+    suspend fun closeAndWait() {
+        val g = gatt
+        if (closed || g == null) {
+            close()
+            return
+        }
+        val down = CompletableDeferred<Unit>()
+        disconnected = down
+        closed = true
+        ready = false
+        gatt = null
+        try {
+            g.disconnect()
+            withTimeoutOrNull(DISCONNECT_TIMEOUT_MS) { down.await() }
+            g.close()
+        } catch (_: SecurityException) {
+            // Permission revoked: Android has already dropped the link.
+        } finally {
+            disconnected = null
+        }
+    }
+
     fun close() {
         if (closed) return
         closed = true
@@ -185,6 +213,7 @@ class GattConnection(
                 return
             }
             if (newState != BluetoothProfile.STATE_DISCONNECTED) return
+            disconnected?.complete(Unit)
             val cause = GattException("connection closed (${describe(status)})")
             linkUp?.completeExceptionally(cause)
             for (op in listOf(mtuOp, discoveryOp, descriptorOp, writeOp)) op.fail(cause)
@@ -247,6 +276,7 @@ class GattConnection(
         private const val SETTLE_MS = 200L
         private const val OP_TIMEOUT_MS = 3_000L
         private const val DISCOVERY_TIMEOUT_MS = 10_000L
+        private const val DISCONNECT_TIMEOUT_MS = 2_000L
         private const val WRITE_TIMEOUT_MS = 1_500L
         private const val BUSY_RETRIES = 20
         private const val BUSY_RETRY_MS = 25L
@@ -259,7 +289,7 @@ class GattConnection(
             19 -> "19: the treadmill closed the connection"
             22 -> "22: the phone closed the connection"
             62 -> "62: could not be established"
-            133 -> "133: GATT error"
+            133 -> "133: Android could not reach the treadmill; another app may be holding it"
             Operation.NOT_STARTED -> "Android refused the request"
             Operation.TIMED_OUT -> "no answer"
             else -> "status $status"

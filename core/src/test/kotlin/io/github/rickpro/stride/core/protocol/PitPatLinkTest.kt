@@ -54,7 +54,21 @@ class PitPatLinkTest {
     fun `unwrap leaves data without the header alone`() {
         assertNull(PitPatWrapper.unwrap(TestFrames.status()))
         assertNull(PitPatWrapper.unwrap(byteArrayOf(0x4D, 0x00, 0x01, 0x00)))
-        assertNull(PitPatWrapper.unwrap(byteArrayOf(0x4D, 0x01, 0x01, 0x05, 0x6A)))
+        assertNull(PitPatWrapper.unwrap(byteArrayOf(0x4C, 0x00, 0x01, 0x05, 0x6A))) // not the magic byte
+    }
+
+    @Test
+    fun `unwrap takes the direction from neither 00 nor 04 and the length from byte 3`() {
+        val frame = PitPatProtocol.keepAliveFrame
+        for (direction in listOf(0x00, 0x04, 0x7F)) {
+            val data = byteArrayOf(0x4D, direction.toByte(), 0x09, 0x05) + frame
+            assertArrayEquals(frame, PitPatWrapper.unwrap(data))
+        }
+        // trailing bytes beyond the announced length are left out; a shorter first piece is kept whole
+        assertArrayEquals(frame, PitPatWrapper.unwrap(byteArrayOf(0x4D, 0x04, 0x09, 0x05) + frame + byteArrayOf(0x01, 0x02)))
+        assertArrayEquals(frame.copyOfRange(0, 3), PitPatWrapper.unwrap(byteArrayOf(0x4D, 0x04, 0x09, 0x05) + frame.copyOfRange(0, 3)))
+        assertEquals(PitPatWrapper.DIRECTION_TO_PAD, PitPatWrapper.wrap(0, frame)[1].toInt())
+        assertEquals(0x04, PitPatWrapper.DIRECTION_FROM_PAD)
     }
 
     @Test

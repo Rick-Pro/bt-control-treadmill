@@ -1,6 +1,7 @@
 package io.github.rickpro.stride.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,15 +16,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.rickpro.stride.R
@@ -43,6 +54,7 @@ import io.github.rickpro.stride.ui.components.StatTile
 import io.github.rickpro.stride.ui.components.StrideIconButton
 import io.github.rickpro.stride.ui.components.openBluetoothSettings
 import io.github.rickpro.stride.ui.theme.StrideColors
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /** One step of the treadmill's own speed granularity, in km/h. */
@@ -61,6 +73,7 @@ fun ControlScreen(
     onRequestPermission: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    onFind: () -> Unit,
 ) {
     val context = LocalContext.current
     val status = state.status
@@ -74,7 +87,7 @@ fun ControlScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
-        StatusLine(state = state)
+        StatusLine(state = state, manager = manager, onFind = onFind)
 
         if (!permissionGranted) {
             Banner(
@@ -92,7 +105,7 @@ fun ControlScreen(
             )
         } else if (state.alert == TreadmillManager.Alert.LINK_LOST || state.link == TreadmillManager.Link.DISCONNECTED) {
             Banner(
-                text = stringResource(R.string.banner_link_lost),
+                text = stringResource(if (state.disconnectedByUser) R.string.banner_disconnected else R.string.banner_link_lost),
                 actionLabel = stringResource(R.string.btn_reconnect),
                 onAction = {
                     manager.dismissAlert()
@@ -126,46 +139,180 @@ fun ControlScreen(
     }
 }
 
-/** A small dot plus the treadmill's name and link state, with the gear on the right. */
+private enum class Confirm { DISCONNECT, FIND, FORGET }
+
+/**
+ * A small dot plus the treadmill's name and link state. Tap it for the connection menu: Reconnect, Disconnect,
+ * Find a treadmill and Forget treadmill. While reconnecting it shows the attempt number and the last problem.
+ */
 @Composable
-private fun StatusLine(state: TreadmillManager.State) {
+private fun StatusLine(state: TreadmillManager.State, manager: TreadmillManager, onFind: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirm by remember { mutableStateOf<Confirm?>(null) }
+    val moving = state.status?.isMoving == true
     val (label, color) = when {
         !state.bluetoothOn -> stringResource(R.string.link_bluetooth_off) to StrideColors.Warning
         state.link == TreadmillManager.Link.CONNECTED && state.fresh -> stringResource(R.string.link_connected) to StrideColors.Accent
         state.link == TreadmillManager.Link.CONNECTED -> stringResource(R.string.hint_no_data) to StrideColors.Warning
         state.link == TreadmillManager.Link.CONNECTING -> stringResource(R.string.link_connecting) to StrideColors.Warning
+        state.link == TreadmillManager.Link.RECONNECTING && state.attempt > 0 ->
+            stringResource(R.string.link_reconnecting_attempt, state.attempt) to StrideColors.Warning
         state.link == TreadmillManager.Link.RECONNECTING -> stringResource(R.string.link_reconnecting) to StrideColors.Warning
+        state.disconnectedByUser -> stringResource(R.string.link_disconnected_by_user) to StrideColors.Muted
         else -> stringResource(R.string.link_disconnected) to StrideColors.Muted
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(10.dp)
-                .clip(CircleShape)
-                .background(color),
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = state.deviceName ?: stringResource(R.string.app_name),
-                style = MaterialTheme.typography.titleMedium,
-                color = StrideColors.Text,
-                maxLines = 1,
+    val problem = state.lastError.takeIf { state.link != TreadmillManager.Link.CONNECTED && !state.disconnectedByUser }
+
+    Box(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium)
+                .clickable(onClickLabel = stringResource(R.string.menu_connection), role = Role.Button) { menuOpen = true }
+                .padding(top = 8.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(color),
             )
-            val attempt = if (state.link == TreadmillManager.Link.RECONNECTING && state.attempt > 0) " (${state.attempt})" else ""
-            Text(
-                text = label + attempt,
-                style = MaterialTheme.typography.bodyMedium,
-                color = color,
-                maxLines = 1,
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = state.deviceName ?: stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = StrideColors.Text,
+                    maxLines = 1,
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = color,
+                    maxLines = 1,
+                )
+                if (problem != null) {
+                    Text(
+                        text = stringResource(R.string.link_last_problem, problem),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = StrideColors.Muted,
+                        maxLines = 2,
+                    )
+                }
+            }
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_down),
+                contentDescription = null,
+                tint = StrideColors.Muted,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        DropdownMenu(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+            containerColor = StrideColors.SurfaceHigh,
+        ) {
+            val remembered = state.link != TreadmillManager.Link.NO_DEVICE
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.btn_reconnect), color = StrideColors.Text) },
+                enabled = remembered,
+                onClick = {
+                    menuOpen = false
+                    manager.dismissAlert()
+                    manager.reconnect()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.btn_disconnect), color = StrideColors.Text) },
+                enabled = state.isActive,
+                onClick = {
+                    menuOpen = false
+                    if (moving) confirm = Confirm.DISCONNECT else manager.disconnect()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.btn_find_treadmill), color = StrideColors.Text) },
+                onClick = {
+                    menuOpen = false
+                    if (moving) {
+                        confirm = Confirm.FIND
+                    } else {
+                        // Close the link first and only then scan: the pad accepts one connection at a time.
+                        scope.launch {
+                            manager.disconnectAndWait()
+                            onFind()
+                        }
+                    }
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.btn_forget), color = StrideColors.Stop) },
+                enabled = remembered,
+                onClick = {
+                    menuOpen = false
+                    confirm = Confirm.FORGET
+                },
             )
         }
     }
+
+    confirm?.let { action ->
+        ConfirmConnectionAction(
+            action = action,
+            deviceName = state.deviceName,
+            moving = moving,
+            onDismiss = { confirm = null },
+            onConfirm = {
+                confirm = null
+                when (action) {
+                    Confirm.DISCONNECT -> manager.disconnect()
+                    Confirm.FIND -> scope.launch {
+                        manager.disconnectAndWait()
+                        onFind()
+                    }
+                    Confirm.FORGET -> manager.forget()
+                }
+            },
+        )
+    }
+}
+
+/** Forget always asks. Disconnect and Find ask only while the belt moves, because it keeps running unattended. */
+@Composable
+private fun ConfirmConnectionAction(action: Confirm, deviceName: String?, moving: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    val title = when (action) {
+        Confirm.FORGET -> stringResource(R.string.confirm_forget_title)
+        else -> stringResource(R.string.confirm_moving_title)
+    }
+    val confirmLabel = when (action) {
+        Confirm.DISCONNECT -> stringResource(R.string.btn_disconnect)
+        Confirm.FIND -> stringResource(R.string.btn_find_treadmill)
+        Confirm.FORGET -> stringResource(R.string.btn_forget)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                if (action == Confirm.FORGET) {
+                    Text(stringResource(R.string.confirm_forget_body, deviceName ?: stringResource(R.string.confirm_this_treadmill)))
+                    if (moving) Spacer(Modifier.height(8.dp))
+                }
+                if (moving) Text(stringResource(R.string.confirm_moving_body))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(confirmLabel, color = if (action == Confirm.FORGET) StrideColors.Stop else StrideColors.Text)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) } },
+        containerColor = StrideColors.SurfaceHigh,
+        titleContentColor = StrideColors.Text,
+        textContentColor = StrideColors.Text,
+    )
 }
 
 /** The big number: current belt speed, with the belt state and the target speed under it. */

@@ -43,7 +43,7 @@ SOFTWARE.
 Source: https://github.com/azmke/pitpat-treadmill-control
 
 The `FF01`/`FF02` transport of Stride follows this project: the characteristic pair, the 4-byte header
-`4D 00 <counter> <length>` with one shared write counter, the heartbeat body, the heartbeat after each notification,
+`4D <direction> <counter> <length>` with one shared write counter, the heartbeat body, the heartbeat after each notification,
 the status layout after stripping the header, and speeds in thousandths of km/h. It is re-implemented in Kotlin from
 reading `src/bluetooth_manager.py`, `src/treadmill_controller.py` and `src/treadmill_data.py`; no code is copied.
 The notice is included because the design is taken from it. See `core/.../protocol/PitPatLink.kt`,

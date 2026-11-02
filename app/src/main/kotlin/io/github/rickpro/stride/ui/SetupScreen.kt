@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +48,9 @@ private const val SCAN_MS = 15_000L
 /**
  * First run, or after Forget: one card. Turn on the treadmill, tap Find, tap the treadmill (or let Stride
  * pick it when it is the only one found). From then on the app connects by itself.
+ *
+ * Reached from the Control screen's "Find a treadmill", it scans at once ([autoScan]) and has a Cancel button
+ * ([onCancel]). The link is already closed by then, because the pad accepts one connection at a time.
  */
 @Composable
 fun SetupScreen(
@@ -54,6 +58,9 @@ fun SetupScreen(
     bluetoothOn: Boolean,
     permissionGranted: Boolean,
     onRequestPermission: () -> Unit,
+    autoScan: Boolean = false,
+    onPicked: () -> Unit = {},
+    onCancel: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scanner = remember { BleScanner(context) }
@@ -70,6 +77,15 @@ fun SetupScreen(
         connectingTo = found.address
         scanner.stop()
         manager.connect(found.address, found.name)
+        onPicked()
+    }
+
+    // Arrived through "Find a treadmill": start looking as soon as Bluetooth and the permission allow it.
+    LaunchedEffect(autoScan, permissionGranted, bluetoothOn) {
+        if (autoScan && permissionGranted && bluetoothOn && !scanned) {
+            scanned = true
+            scanner.start(SCAN_MS)
+        }
     }
 
     // Exactly one treadmill after a full scan: no need to ask.
@@ -136,6 +152,12 @@ fun SetupScreen(
             } else if (scanned && !scanning && error == null) {
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.setup_none), style = MaterialTheme.typography.bodyMedium, color = StrideColors.Muted)
+            }
+        }
+        if (onCancel != null) {
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.btn_cancel), color = StrideColors.Muted, style = MaterialTheme.typography.labelLarge)
             }
         }
         Spacer(Modifier.height(24.dp))
