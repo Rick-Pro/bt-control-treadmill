@@ -28,7 +28,7 @@ Stride keeps a few things in its private storage. Only Stride can read them, and
 - **Share.** If you tap Share in History or in the Diagnostics log, Android opens its share sheet and the text goes only to
   the app you pick. The Diagnostics log has connection events and frames. It never contains your profile values or the
   treadmill's Bluetooth address, and it hides the treadmill's own id.
-- **Links.** The About page has links (the developer's site, the project page, the licenses and this policy). They open
+- **Links.** The About page has links (the developer's site, the project page, a support page, the licenses and this policy). They open
   in your browser, which is then governed by that site's own policy.
 
 ## Permissions

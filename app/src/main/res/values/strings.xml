@@ -139,6 +139,7 @@
     <string name="about_developer">Developer</string>
     <string name="about_developer_name">Ricardo Uzcategui</string>
     <string name="about_github">Stride on GitHub</string>
+    <string name="about_support">Support Stride</string>
     <string name="about_open_link">Open in the browser</string>
     <string name="about_credits">Credits</string>
     <string name="about_credit_controller">The Bluetooth protocol, safety rules and transport are ported from pitpat-controller by Francisco Rodríguez (MIT).</string>

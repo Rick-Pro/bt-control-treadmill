@@ -1,5 +1,2 @@
-# The Sponsor button on the repo page. For now it points at the developer's site.
-# Ricardo swaps this for Buy Me a Coffee or GitHub Sponsors later (docs/plan.md, Needs Ricardo), for example:
-#   github: [Rick-Pro]
-#   buy_me_a_coffee: <username>
-custom: ["https://ricardouzcategui.com"]
+buy_me_a_coffee: ricardouzcategui
+custom: ["https://buy.stripe.com/6oUbJ05fZ39HcVwfRX9IQ00"]

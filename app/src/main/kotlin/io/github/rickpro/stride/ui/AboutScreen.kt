@@ -32,6 +32,7 @@ import io.github.rickpro.stride.ui.theme.StrideColors
 
 private const val DEVELOPER_URL = "https://ricardouzcategui.com"
 private const val REPO_URL = "https://github.com/Rick-Pro/stride-android"
+private const val SUPPORT_URL = "https://buymeacoffee.com/ricardouzcategui"
 private const val NOTICES_URL = "https://github.com/Rick-Pro/stride-android/blob/main/THIRD_PARTY_NOTICES.md"
 private const val LICENSE_URL = "https://github.com/Rick-Pro/stride-android/blob/main/LICENSE"
 private const val PRIVACY_URL = "https://rick-pro.github.io/stride-android/privacy.html"
@@ -71,6 +72,7 @@ fun AboutScreen(versionName: String, onBack: () -> Unit) {
             Text(stringResource(R.string.about_developer), style = MaterialTheme.typography.titleMedium, color = StrideColors.Text)
             LinkText(text = stringResource(R.string.about_developer_name), url = DEVELOPER_URL)
             LinkText(text = stringResource(R.string.about_github), url = REPO_URL)
+            LinkText(text = stringResource(R.string.about_support), url = SUPPORT_URL)
             Section()
 
             Text(stringResource(R.string.about_credits), style = MaterialTheme.typography.titleMedium, color = StrideColors.Text)
