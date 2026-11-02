@@ -14,6 +14,7 @@ Thanks for looking. Stride is a small app with a narrow job, so the rules are sh
 - **Protocol changes need a capture from a real pad.** Frames in `docs/protocol.md` are what real pads sent. A new frame or a
   changed byte needs the raw hex from a real pad (say which model and firmware), and a test that decodes it. Leave the
   pad's own id out of anything you commit; Stride masks it in the Diagnostics log.
+- **Bump `VERSION` if users will see the change** (patch for a fix, minor for a feature) and add its row to What's new in the README. Merging a new `VERSION` publishes a release automatically; docs-only and CI-only PRs do not bump.
 - **Keep the safety rules in `core/`.** STOP goes first, speed commands go only while the belt runs and the status is
   fresh, and nothing is resent after a reconnect. They are tested; do not move them into the UI.
 - **Plain words, no em dashes** in app text and docs. No secrets, tokens or personal data in code, tests, docs or logs.

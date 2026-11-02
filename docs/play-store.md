@@ -11,9 +11,9 @@ console changes, so go by what it asks.
   an `.aab` until then.
 - **Developer account:** a Google Play developer account (one-time fee) with identity **verified**. A personal account is
   enough. Verification can take days, so start it first.
-- **Release key:** done once, steps in `docs/plan.md` section 5 (`scripts/make-release-key.sh`). Then run the Release
-  workflow for `v1.0.0`. It publishes `stride-v1.0.0.aab` (this is the file for Play) and `stride-v1.0.0.apk` (for people
-  who install by hand), each with a `.sha256`.
+- **Release key:** done once, steps in `docs/plan.md` section 5 (`scripts/make-release-key.sh`). Releases are published
+  automatically when a merge to `main` changes `VERSION` (decision D30; v1.0.0 is already out). Each one has
+  `stride-vX.Y.Z.aab` (this is the file for Play) and `stride-vX.Y.Z.apk` (for people who install by hand), each with a `.sha256`.
 - **Privacy policy at a public web address.** `docs/privacy.md` says Stride collects nothing, and `docs/privacy.html` is the
   same text as a page. GitHub Pages serves `/docs` on `main`, so the address is
   **https://rick-pro.github.io/stride-android/privacy.html**. Open it in a private window before you submit: Play needs a
@@ -64,10 +64,10 @@ The version code goes up with every upload by itself: `major x 1,000,000 + minor
 ## 6. The closed test (required for personal accounts)
 A personal developer account created after November 2023 must run a **closed test with at least 12 testers opted in for 14
 days in a row** before it can apply for production. As of this writing; check the console for the current numbers.
-1. Testing, Closed testing, create a track, and upload `stride-v1.0.0.aab`.
+1. Testing, Closed testing, create a track, and upload the `.aab` of the latest release (for example `stride-v1.0.1.aab`).
 2. Add testers (an email list or a Google group) of 12 or more real Google accounts. They accept the invite link and keep Stride installed.
 3. After 14 days, in the console apply for production access and answer its short questionnaire.
-4. Fix what testers report with a new version (new `VERSION`, Release workflow, upload the new `.aab`). The 14 days run on the track, not on a version.
+4. Fix what testers report with a new version (bump `VERSION` in the fix PR, the merge publishes the release, upload its new `.aab`). The 14 days run on the track, not on a version.
 
 ## 7. Production
 After Google grants access: Production, create a release, upload the `.aab`, write release notes from the README What's new
