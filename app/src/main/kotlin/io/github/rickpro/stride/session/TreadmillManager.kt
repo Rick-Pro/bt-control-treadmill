@@ -24,6 +24,7 @@ import io.github.rickpro.stride.core.control.StepEstimator
 import io.github.rickpro.stride.core.history.WorkoutRecorder
 import io.github.rickpro.stride.core.profile.CalorieEstimator
 import io.github.rickpro.stride.core.profile.Profile
+import io.github.rickpro.stride.core.protocol.LogMask
 import io.github.rickpro.stride.core.protocol.PitPatLink
 import io.github.rickpro.stride.core.protocol.PitPatProtocol
 import io.github.rickpro.stride.core.protocol.RunState
@@ -117,6 +118,8 @@ class TreadmillManager(
         val profile: Profile? = null,
         /** Stride's own calorie estimate for the walk so far, or null without a profile. */
         val estimatedKcal: Int? = null,
+        /** The pad's ASCII id, once a 52-byte status has been seen on this treadmill. Settings shows it. */
+        val deviceId: String? = null,
     ) {
         val isActive: Boolean get() = link == Link.CONNECTING || link == Link.CONNECTED || link == Link.RECONNECTING
         val isConnected: Boolean get() = link == Link.CONNECTED
@@ -184,7 +187,7 @@ class TreadmillManager(
     /** Remembers [address] as the treadmill and connects to it. */
     fun connect(address: String, name: String?) = onBle {
         settings.saveDevice(address, name)
-        _state.update { it.copy(deviceName = name, alert = null, disconnectedByUser = false, lastError = null) }
+        _state.update { it.copy(deviceName = name, alert = null, disconnectedByUser = false, lastError = null, deviceId = null) }
         startSession()
     }
 
@@ -239,7 +242,10 @@ class TreadmillManager(
         stopSession()
         settings.forgetDevice()
         _state.update {
-            it.copy(link = Link.NO_DEVICE, deviceName = null, transport = null, disconnectedByUser = false, lastError = null)
+            it.copy(
+                link = Link.NO_DEVICE, deviceName = null, transport = null, disconnectedByUser = false, lastError = null,
+                deviceId = null,
+            )
         }
     }
 
@@ -455,7 +461,7 @@ class TreadmillManager(
         val now = now()
         lastDataAtMs = now
         val statuses = codec?.decode(value, now).orEmpty()
-        incomingLog.line(value, statuses.lastOrNull(), now)?.let(log::add)
+        incomingLog.line(LogMask.notificationHex(value), statuses.lastOrNull(), now)?.let(log::add)
         for (status in statuses) {
             countdown.onStatus(status.state, now)?.let { ended ->
                 log.add(
@@ -473,7 +479,7 @@ class TreadmillManager(
             _state.update {
                 it.copy(
                     status = status, fresh = true, steps = steps, recording = recorder.isRecording,
-                    startingSinceMs = countdown.startedAtMs, estimatedKcal = kcal,
+                    startingSinceMs = countdown.startedAtMs, estimatedKcal = kcal, deviceId = status.deviceId ?: it.deviceId,
                     alert = if (it.alert == Alert.STOP_NOT_CONFIRMED && !status.isMoving) null else it.alert,
                 )
             }
@@ -599,12 +605,12 @@ class TreadmillManager(
             undecoded = 0
         }
 
-        fun line(raw: ByteArray, status: TreadmillStatus?, nowMs: Long): String? {
+        fun line(rawHex: String, status: TreadmillStatus?, nowMs: Long): String? {
             if (status == null) {
                 undecoded++
-                return if (undecoded <= 20 || undecoded % 50 == 0) "<- ${raw.toHex()}" else null
+                return if (undecoded <= 20 || undecoded % 50 == 0) "<- $rawHex" else null
             }
-            val key = "${status.state}/${status.targetSpeedKmh}/${(status.speedKmh * 10).roundToInt()}"
+            val key = "${status.state}/${status.targetSpeedKmh}/${(status.speedKmh * 10).roundToInt()}/${(status.load ?: 0) / LOAD_BUCKET}"
             if (key == lastKey && nowMs - lastAtMs < 5_000) {
                 skipped++
                 return null
@@ -613,7 +619,7 @@ class TreadmillManager(
             lastKey = key
             lastAtMs = nowMs
             skipped = 0
-            return "<- ${raw.toHex()} | ${describe(status)}$extra"
+            return "<- $rawHex | ${describe(status)}$extra"
         }
 
         private fun describe(s: TreadmillStatus): String {
@@ -623,10 +629,15 @@ class TreadmillManager(
                 RunState.RUNNING -> "running"
                 RunState.PAUSED -> "paused"
             }
+            val extras = buildString {
+                if (s.heartRateBpm > 0) append(" hr=").append(s.heartRateBpm)
+                if (s.incline > 0) append(" incline=").append(s.incline)
+                s.load?.let { append(" load=").append(it) } // an unknown value that follows belt load; logged, never shown
+            }
             return String.format(
-                Locale.ROOT, "%s v=%.2f target=%.2f d=%.3f t=%d steps=%d kcal=%d max=%s fw=%d",
+                Locale.ROOT, "%s v=%.2f target=%.2f d=%.3f t=%d steps=%d kcal=%d max=%s fw=%d%s",
                 state, s.speedKmh, s.targetSpeedKmh, s.distanceKm, s.durationSeconds, s.steps, s.kcal,
-                s.maxSpeedKmh?.toString() ?: "-", s.firmware,
+                s.maxSpeedKmh?.toString() ?: "-", s.firmware, extras,
             )
         }
     }
@@ -635,5 +646,8 @@ class TreadmillManager(
         const val WATCHDOG_MS = 10_000L
         const val MAX_BACKOFF_MS = 10_000L
         const val MAX_STOP_RETRIES = 3
+
+        /** A line is logged again when the load moves by this much, so its trend shows without flooding the log. */
+        const val LOAD_BUCKET = 50
     }
 }

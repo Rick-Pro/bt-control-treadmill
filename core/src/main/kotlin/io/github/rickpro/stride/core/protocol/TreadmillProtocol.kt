@@ -65,6 +65,19 @@ data class TreadmillStatus(
     val maxSpeedKmh: Double?,
     /** Firmware version byte of the status frame (27 on Ricardo's pad); 0 when unknown. */
     val firmware: Int = 0,
+    /** Heart rate in bpm from byte 13, or 0. The HY-BA06B1 has no sensor and always sends 0. */
+    val heartRateBpm: Int = 0,
+    /** Current incline from byte 11, or 0. This pad has no incline and sends 0. */
+    val incline: Int = 0,
+    /** Byte 24: changed from CC to CD when a walk started on Ricardo's pad. Logged, not used. */
+    val sessionId: Int = 0,
+    /** ASCII id of the pad (bytes 32 to 49 of the 52-byte frame, up to the first NUL), or null in the 47-byte frame. */
+    val deviceId: String? = null,
+    /**
+     * An unknown u16 that rises with belt load and decays after STOP. It sits at offset 41 or 43 of the 47-byte frame
+     * (both seen), so this is whichever of the two is not zero, or null when both are. Logged as "load", never shown.
+     */
+    val load: Int? = null,
 ) {
     val isMoving: Boolean get() = state == RunState.RUNNING || state == RunState.STARTING
 

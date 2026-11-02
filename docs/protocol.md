@@ -173,6 +173,8 @@ XOR and trailer is accepted.
 | 26 | flags: `01` Wi-Fi connected (clear on Ricardo's pad); bit `02` unknown, set in every capture; bits `18` = run state (`18` starting countdown, `08` running, `10` paused, `00` stopped); `80` panel shows imperial. Seen: `82` stopped, `9A` starting, `8A` running |
 | 27 to 28 | max speed, u16, thousandths of km/h |
 | 29 | max incline (0 = none) |
+| 30 | device type, low 5 bits (`05` on Ricardo's pad) |
+| 32 to 49 (52-byte frame only) | the pad's ASCII id, read up to the first NUL (17 characters plus a NUL on Ricardo's pad, bytes 48 and 49 included). azmke reads only 32 to 47 as the serial and 48 and 49 as BLE model and brand, so the last character may belong to the model. In the log the 52-byte frame came first (header counter `01`) and every later status had 47 bytes. Stride shows it in Settings; in the Diagnostics log those bytes are shown as `**`, so a shared log does not carry it |
 | 41 to 44 (47-byte frame) | an unknown u16 Stride calls **load**. Seen as `01 96` at 41 to 42 while running and `01 58` at 43 to 44 during the countdown, in the range `0122` to `0309` over a walk. It rises with belt load and decays after STOP. It is not steps. Stride logs it and never shows it. Which of the two offsets is the real one is open: the XOR cannot say, because it ignores where a byte sits. azmke's extended layout names them `real_rotate` (41 to 42) and `real_electricity_steps` (43 to 44) |
 | 47 | bit `01` = beeper on (reported by one implementation, unverified) |
 | 50 | XOR checksum of bytes 1 to 49 |
@@ -207,6 +209,27 @@ RUNNING, flags 8A, session CD, speed 1.60, target 2.40, 1 m, 2000 ms, load 01 96
 00 00 00 00 00 00 00 00 00 01 96 00 00 7F 43
 ```
 They decode to STARTING with speed 0 and RUNNING at 1.60 km/h (target 2.40, 0.001 km, 2 s).
+
+### Which fields this BA06-B1 fills in (firmware 27)
+From the captures and the build 3 log. "Zero" means the pad sends the field but always 0.
+
+| Field | Offset | On this pad | Stride shows it |
+|---|---|---|---|
+| Speed, target speed | 3, 5 | filled in, thousandths of km/h | yes |
+| Distance | 7 to 10 | filled in, metres; a leftover counter until the next start resets it | yes |
+| Duration | 20 to 23 | filled in, milliseconds | yes |
+| Run state and flags | 26 | filled in (`82`, `9A`, `8A` seen) | yes (Starting, Walking, Paused, Stopping) |
+| Max speed | 27 to 28 | filled in, 6.0 km/h | yes, Settings, Treadmill card |
+| Firmware | 25 | filled in, 27 | yes, Settings, Treadmill card |
+| Device id | 32 to 49 | only in the 52-byte frame | yes, Settings, Treadmill card |
+| Session id | 24 | filled in, changes per walk | log only |
+| Device type | 30 | `05` | no |
+| Load (unknown) | 41 to 42 or 43 to 44 | filled in, follows belt load | log only, as `load` |
+| Steps | 14 to 17 | **zero** for the whole walk | Stride estimates them (step length from the profile) |
+| Calories | 18 to 19 | **zero** for the whole walk | Stride estimates them (needs the profile) |
+| Heart rate | 13 | **zero** (no sensor) | only if a pad sends a value above 0 |
+| Incline, target incline | 11, 12 | **zero** (no incline) | only if a pad sends a value above 0 |
+| Wi-Fi flag | 26, bit `01` | clear | no: the pad's Wi-Fi only talks to the PitPat cloud |
 
 What this means for the app: the countdown screen runs for about 3 s and ends when the pad says `RUNNING`; a status that
 says `STOPPED` with a speed above 0 is the belt still slowing down, not a stopped belt; Stride's distance and duration

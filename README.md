@@ -69,13 +69,16 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 
 **History.** Every walk longer than 30 seconds is saved when the belt stops: date, time, distance, average and max speed, calories, steps, and a speed chart. Totals for this week and all time at the top. Long-press a walk to delete it (it asks first). Share exports every walk as CSV. Walks are not editable; the numbers are the pad's.
 
+**Treadmill (in Settings).** A small card with what the pad reports about itself: the protocol Stride is using, firmware, the pad's id, max speed, and the pad's own step count next to Stride's estimate. Heart rate and incline appear only when a pad sends a value other than 0. An unknown internal value that follows belt load is written to the Diagnostics log as `load` and never shown. The pad's id is masked in that log.
+
 **Me (in Settings, optional).** Sex, height, weight and, if you like, age, in the units you picked. They stay in this app's private storage on the phone: no account, no network, no backup. They are used for three things only: the calorie estimate (the standard walking equation from the American College of Sports Medicine: MET from speed, then MET x kg x hours; it is an estimate, not a measurement); the step length for the step estimate (0.413 x height for women, 0.415 x height for men, in between for other); and your weight, sent to the pad in each command so the pad's own calorie count has it. The weight is hidden in the Diagnostics log. Remove clears everything.
 
 **Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), About.
 
 ## What it will not do
 
-- No training plans, maps, races, leaderboards, voice or heart rate. No incline (this pad has none).
+- No training plans, maps, races, leaderboards or voice. Heart rate and incline show in Settings only if a pad sends them; the HY-BA06B1 has neither.
+- **No Wi-Fi.** The pad's Wi-Fi only talks to the PitPat cloud; it has no local interface Stride could use. Everything Stride does goes over Bluetooth.
 - No account, no sync, no cloud, no Health Connect. The data stays on the phone.
 - No background control. Stride talks to the pad while it is open or just switched away from. Closing the app with the belt stopped lets the link go.
 - It cannot stop the belt if Bluetooth is off or the link is gone. The pad's own remote can.

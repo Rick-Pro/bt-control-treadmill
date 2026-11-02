@@ -2,6 +2,7 @@ package io.github.rickpro.stride.core.protocol
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -206,5 +207,73 @@ class PadCapturesTest {
             assertEquals(47, inner.size)
             assertTrue(PitPatProtocol.isValidFrame(inner))
         }
+    }
+
+    // ------------------------------------------------------------------ what else the frames carry
+
+    @Test
+    fun `the 52 byte capture carries the pad's id and the 47 byte ones do not`() {
+        val withId = wrapped().decode(long, 0).single()
+        // The id is the printable ASCII in inner bytes 32 to 49 up to the NUL; read it from the bytes themselves.
+        val inner = PitPatWrapper.unwrap(long)!!
+        val expected = String(inner, 32, 18, Charsets.US_ASCII).substringBefore('\u0000')
+        assertEquals(expected, withId.deviceId)
+        assertEquals(17, withId.deviceId!!.length)
+        assertTrue(withId.deviceId!!.all { it.isLetterOrDigit() })
+        assertNull(wrapped().decode(short, 0).single().deviceId)
+        assertNull(wrapped().decode(starting, 0).single().deviceId)
+        assertNull(wrapped().decode(running, 0).single().deviceId)
+    }
+
+    @Test
+    fun `the session id changes when a walk starts`() {
+        val link = wrapped()
+        assertEquals(0xCB, link.decode(short, 0).single().sessionId) // idle, before the walk
+        assertEquals(0xCC, link.decode(starting, 100).single().sessionId)
+        assertEquals(0xCD, link.decode(running, 3_200).single().sessionId)
+    }
+
+    @Test
+    fun `the unknown load value is read from whichever offset holds it`() {
+        val link = wrapped()
+        assertNull(link.decode(short, 0).single().load) // idle: both offsets are zero
+        assertEquals(0x158, link.decode(starting, 100).single().load) // 01 58 at inner offset 43
+        assertEquals(0x196, link.decode(running, 3_200).single().load) // 01 96 at inner offset 41
+        assertNull(link.decode(long, 4_000).single().load) // the 52-byte frame has the id there, not a load
+    }
+
+    @Test
+    fun `this pad reports no heart rate, incline, steps or calories`() {
+        for (capture in listOf(long, short, starting, running)) {
+            val status = wrapped().decode(capture, 0).single()
+            assertEquals(0, status.heartRateBpm)
+            assertEquals(0, status.incline)
+            assertEquals(0L, status.steps)
+            assertEquals(0, status.kcal)
+        }
+    }
+
+    @Test
+    fun `heart rate and incline are read when a pad does send them`() {
+        val status = PitPatProtocol.parseStatus(TestFrames.status(heartRate = 72, incline = 3))!!
+        assertEquals(72, status.heartRateBpm)
+        assertEquals(3, status.incline)
+        val none = PitPatProtocol.parseStatus(TestFrames.status())!!
+        assertEquals(0, none.heartRateBpm)
+        assertEquals(0, none.incline)
+    }
+
+    @Test
+    fun `an id that is not text, or too short, is not an id`() {
+        assertEquals("ABC-1234", PitPatProtocol.parseStatus(TestFrames.status(deviceId = "ABC-1234"))!!.deviceId)
+        assertNull(PitPatProtocol.parseStatus(TestFrames.status())!!.deviceId) // all NUL
+        assertNull(PitPatProtocol.parseStatus(TestFrames.status(deviceId = "AB"))!!.deviceId) // under 3 characters
+        val binary = TestFrames.status().also {
+            it[32] = 0x01
+            it[33] = 0x02
+            it[34] = 0x03
+            it[50] = PitPatProtocol.checksum(it)
+        }
+        assertNull(PitPatProtocol.parseStatus(binary)!!.deviceId)
     }
 }
