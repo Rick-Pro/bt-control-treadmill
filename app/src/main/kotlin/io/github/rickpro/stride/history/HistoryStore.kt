@@ -78,6 +78,7 @@ class HistoryStore(context: Context) {
                 at.format(day), at.format(time), w.durationSeconds.toString(),
                 "%.3f".format(Locale.ROOT, w.distanceKm), w.kcal.toString(), w.steps.toString(),
                 "%.2f".format(Locale.ROOT, w.avgSpeedKmh), "%.2f".format(Locale.ROOT, w.maxSpeedKmh),
+                w.estimatedKcal?.toString().orEmpty(),
             ).joinToString(",")
         }
         return (listOf(CSV_HEADER) + rows).joinToString("\n") + "\n"
@@ -94,6 +95,6 @@ class HistoryStore(context: Context) {
 
     private companion object {
         const val FILE_NAME = "workouts.jsonl"
-        const val CSV_HEADER = "date,start,duration_s,distance_km,kcal,steps,avg_kmh,max_kmh"
+        const val CSV_HEADER = "date,start,duration_s,distance_km,kcal,steps,avg_kmh,max_kmh,kcal_estimated"
     }
 }

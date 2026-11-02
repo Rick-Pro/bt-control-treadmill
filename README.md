@@ -58,7 +58,7 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 
 - Status line: the pad's name and Connected, Connecting, Reconnecting or Not found.
 - The speed, big, in mph (or km/h, one tap in Settings).
-- Four numbers: time, distance, calories, steps. Steps are marked **est.** when the pad does not count them and Stride estimates them from the distance.
+- Four numbers: time, distance, calories, steps. Steps are marked **est.** when the pad does not count them and Stride estimates them from the distance (with your step length, if you filled in **Me**). Calories are the pad's own number until you fill in **Me**; then they are Stride's estimate, marked **est.** The HY-BA06B1 reports 0 calories and 0 steps on every walk, so both come from Stride.
 - **SPD -** and **SPD +** on either side of **Start / Pause**. Each tap moves the target one step (0.1 km/h, the pad's own step). They work while the belt runs; the preset chips pick the speed for the next start. Start sends the last speed you used; Pause holds the belt and the time.
 - **The countdown.** After Start the pad beeps for about 3 seconds before the belt moves. The screen shows a big **Starting** with a pulsing ring and a 3-2-1 count, and changes by itself when the pad says the belt is running. **Paused** is a clear badge, and **Stopping** shows while the pad says stopped but the belt is still slowing down.
 - **STOP**, wide and red. It goes first in line, before anything else waiting to be sent, and is resent until the belt stops.
@@ -69,7 +69,9 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 
 **History.** Every walk longer than 30 seconds is saved when the belt stops: date, time, distance, average and max speed, calories, steps, and a speed chart. Totals for this week and all time at the top. Long-press a walk to delete it (it asks first). Share exports every walk as CSV. Walks are not editable; the numbers are the pad's.
 
-**Settings.** Units (mph or km), keep the screen on, presets, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), About.
+**Me (in Settings, optional).** Sex, height, weight and, if you like, age, in the units you picked. They stay in this app's private storage on the phone: no account, no network, no backup. They are used for three things only: the calorie estimate (the standard walking equation from the American College of Sports Medicine: MET from speed, then MET x kg x hours; it is an estimate, not a measurement); the step length for the step estimate (0.413 x height for women, 0.415 x height for men, in between for other); and your weight, sent to the pad in each command so the pad's own calorie count has it. The weight is hidden in the Diagnostics log. Remove clears everything.
+
+**Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), About.
 
 ## What it will not do
 

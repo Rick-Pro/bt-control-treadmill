@@ -120,4 +120,27 @@ class WorkoutRecorderTest {
         assertNull(recorder.onLinkDown(t0 + 300_000))
         assertFalse(recorder.isRecording)
     }
+
+    @Test
+    fun `the estimate of the last status lands in the walk, beside the pad's own kcal`() {
+        val recorder = WorkoutRecorder()
+        for (s in 0L..120L) {
+            recorder.update(status(RunState.RUNNING, s, s * 2.0 / 3600, 2.0, kcal = 0), steps, t0 + s * 1000, estimatedKcal = (s / 4).toInt())
+        }
+        recorder.update(status(RunState.STOPPED, 120, 0.0667, kcal = 0), steps, t0 + 121_000, estimatedKcal = 30)
+        val workout = recorder.update(status(RunState.STOPPED, 120, 0.0667, kcal = 0), steps, t0 + 122_000, estimatedKcal = 30)!!
+        assertEquals(0, workout.kcal)
+        assertEquals(30, workout.estimatedKcal)
+        assertEquals(30, workout.bestKcal)
+    }
+
+    @Test
+    fun `no estimate means none is stored and the pad's number is shown`() {
+        val recorder = WorkoutRecorder()
+        recorder.walk(0, 120)
+        recorder.update(status(RunState.STOPPED, 120, 0.0667), steps, t0 + 121_000)
+        val workout = recorder.update(status(RunState.STOPPED, 120, 0.0667), steps, t0 + 122_000)!!
+        assertNull(workout.estimatedKcal)
+        assertEquals(10, workout.bestKcal)
+    }
 }

@@ -71,4 +71,24 @@ class WorkoutJsonTest {
         assertEquals(0.0, decoded!!.distanceKm, 0.0)
         assertEquals(0.0, decoded.avgSpeedKmh, 0.0)
     }
+
+    @Test
+    fun `the calorie estimate round trips next to the pad's own count`() {
+        val withEstimate = workout.copy(kcal = 0, estimatedKcal = 41)
+        val line = WorkoutJson.encode(withEstimate)
+        assertTrue(line.contains("\"kcal\":0"))
+        assertTrue(line.contains("\"kcalEstimate\":41"))
+        val back = WorkoutJson.decode(line)!!
+        assertEquals(0, back.kcal)
+        assertEquals(41, back.estimatedKcal)
+        assertEquals(41, back.bestKcal)
+    }
+
+    @Test
+    fun `a walk without an estimate writes no key and an older line reads as no estimate`() {
+        val line = WorkoutJson.encode(workout)
+        assertFalse(line.contains("kcalEstimate"))
+        assertNull(WorkoutJson.decode(line)!!.estimatedKcal)
+        assertEquals(93, WorkoutJson.decode(line)!!.bestKcal) // falls back to the pad's number
+    }
 }

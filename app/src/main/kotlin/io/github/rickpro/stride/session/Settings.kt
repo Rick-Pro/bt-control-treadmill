@@ -2,6 +2,8 @@ package io.github.rickpro.stride.session
 
 import android.content.Context
 import androidx.core.content.edit
+import io.github.rickpro.stride.core.profile.Profile
+import io.github.rickpro.stride.core.profile.Sex
 import io.github.rickpro.stride.core.units.MeasureUnit
 
 /** Small persistent settings: the remembered treadmill, units, presets and options. Nothing leaves the phone. */
@@ -41,6 +43,32 @@ class Settings(context: Context) {
             ?: DEFAULT_PRESETS_KMH
         set(value) = prefs.edit { putString(KEY_PRESETS, value.joinToString(";")) }
 
+    /**
+     * The person's profile for calories and steps, or null when none is saved (or what is saved is not valid).
+     * Kept in this app's private preferences only: backups are off and nothing is ever sent anywhere.
+     */
+    var profile: Profile?
+        get() {
+            val sex = prefs.getString(KEY_SEX, null)?.let { name -> Sex.entries.firstOrNull { it.name == name } } ?: return null
+            val height = prefs.getString(KEY_HEIGHT_CM, null)?.toDoubleOrNull() ?: return null
+            val weight = prefs.getString(KEY_WEIGHT_KG, null)?.toDoubleOrNull() ?: return null
+            val age = if (prefs.contains(KEY_AGE)) prefs.getInt(KEY_AGE, 0) else null
+            return Profile(sex, height, weight, age).takeIf { it.isValid }
+        }
+        set(value) = prefs.edit {
+            if (value == null) {
+                remove(KEY_SEX)
+                remove(KEY_HEIGHT_CM)
+                remove(KEY_WEIGHT_KG)
+                remove(KEY_AGE)
+            } else {
+                putString(KEY_SEX, value.sex.name)
+                putString(KEY_HEIGHT_CM, value.heightCm.toString())
+                putString(KEY_WEIGHT_KG, value.weightKg.toString())
+                if (value.ageYears != null) putInt(KEY_AGE, value.ageYears) else remove(KEY_AGE)
+            }
+        }
+
     var keepAliveEnabled: Boolean
         get() = prefs.getBoolean(KEY_KEEP_ALIVE, true)
         set(value) = prefs.edit { putBoolean(KEY_KEEP_ALIVE, value) }
@@ -58,6 +86,10 @@ class Settings(context: Context) {
         private const val KEY_UNIT = "unit"
         private const val KEY_PRESETS = "presets_kmh"
         private const val KEY_KEEP_ALIVE = "keep_alive"
+        private const val KEY_SEX = "profile_sex"
+        private const val KEY_HEIGHT_CM = "profile_height_cm"
+        private const val KEY_WEIGHT_KG = "profile_weight_kg"
+        private const val KEY_AGE = "profile_age"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
     }
 }

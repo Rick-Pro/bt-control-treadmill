@@ -11,7 +11,7 @@ object HistoryStats {
         walks = workouts.size,
         seconds = workouts.sumOf { it.durationSeconds },
         km = workouts.sumOf { it.distanceKm },
-        kcal = workouts.sumOf { it.kcal },
+        kcal = workouts.sumOf { it.bestKcal },
     )
 
     /** Walks that started in the current Monday-to-Sunday week, local time. */

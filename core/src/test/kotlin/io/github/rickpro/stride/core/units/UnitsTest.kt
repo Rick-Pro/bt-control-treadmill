@@ -46,4 +46,23 @@ class UnitsTest {
         assertEquals("32'11\"", Units.paceText(3.0, MeasureUnit.IMPERIAL))
         assertEquals("10'00\"", Units.paceText(6.0, MeasureUnit.METRIC))
     }
+
+    @Test
+    fun `converts height between cm and feet and inches`() {
+        assertEquals(69.0, Units.cmToInches(175.26), 1e-9)
+        assertEquals(175.26, Units.feetAndInchesToCm(5, 9.0), 1e-9)
+        assertEquals(5 to 9, Units.cmToFeetAndInches(175.26))
+        assertEquals(6 to 0, Units.cmToFeetAndInches(182.88))
+        assertEquals(5 to 10, Units.cmToFeetAndInches(177.8)) // 70 in
+        assertEquals(6 to 0, Units.cmToFeetAndInches(181.8)) // 71.57 in rounds up and carries into the next foot
+        assertEquals(5 to 0, Units.cmToFeetAndInches(152.4))
+        assertEquals(170.0, Units.feetAndInchesToCm(5, Units.cmToInches(170.0) - 60), 1e-9)
+    }
+
+    @Test
+    fun `converts weight between kg and pounds both ways`() {
+        assertEquals(154.3236, Units.kgToLb(70.0), 1e-4)
+        assertEquals(69.8532, Units.lbToKg(154.0), 1e-4)
+        assertEquals(70.0, Units.lbToKg(Units.kgToLb(70.0)), 1e-9)
+    }
 }

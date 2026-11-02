@@ -21,6 +21,7 @@ class WorkoutRecorder {
     private var startedAtEpochMs = 0L
     private var lastStatus: TreadmillStatus? = null
     private var lastSteps: StepEstimator.Steps? = null
+    private var lastEstimatedKcal: Int? = null
     private var lastDataAtEpochMs = 0L
     private var maxSpeedKmh = 0.0
     private var samples = mutableListOf<SpeedSample>()
@@ -31,7 +32,7 @@ class WorkoutRecorder {
     val isRecording: Boolean get() = lastStatus != null
 
     /** Feed every decoded status. Returns a finished walk when one ends, null otherwise. */
-    fun update(status: TreadmillStatus, steps: StepEstimator.Steps, nowEpochMs: Long): Workout? {
+    fun update(status: TreadmillStatus, steps: StepEstimator.Steps, nowEpochMs: Long, estimatedKcal: Int? = null): Workout? {
         var finished: Workout? = null
         if (isRecording) {
             val previous = lastStatus!!
@@ -42,11 +43,12 @@ class WorkoutRecorder {
             }
         }
         if (!isRecording) {
-            if (status.isMoving) open(status, steps, nowEpochMs)
+            if (status.isMoving) open(status, steps, nowEpochMs, estimatedKcal)
             return finished
         }
         lastStatus = status
         lastSteps = steps
+        lastEstimatedKcal = estimatedKcal
         lastDataAtEpochMs = nowEpochMs
         maxSpeedKmh = max(maxSpeedKmh, status.speedKmh)
         if (status.durationSeconds >= nextSampleAtS && samples.size < Workout.MAX_SAMPLES) {
@@ -72,10 +74,11 @@ class WorkoutRecorder {
     /** Ends the open walk now, whatever its state (app closing, user forgot the treadmill). */
     fun flush(nowEpochMs: Long): Workout? = if (isRecording) close(nowEpochMs) else null
 
-    private fun open(status: TreadmillStatus, steps: StepEstimator.Steps, nowEpochMs: Long) {
+    private fun open(status: TreadmillStatus, steps: StepEstimator.Steps, nowEpochMs: Long, estimatedKcal: Int?) {
         startedAtEpochMs = nowEpochMs - status.durationSeconds * 1000 // connected mid-walk: back-date the start
         lastStatus = status
         lastSteps = steps
+        lastEstimatedKcal = estimatedKcal
         lastDataAtEpochMs = nowEpochMs
         maxSpeedKmh = status.speedKmh
         samples = mutableListOf(SpeedSample(status.durationSeconds, status.speedKmh))
@@ -98,9 +101,11 @@ class WorkoutRecorder {
             avgSpeedKmh = if (status.durationSeconds > 0) status.distanceKm / (status.durationSeconds / 3600.0) else 0.0,
             maxSpeedKmh = maxSpeedKmh,
             samples = samples.toList(),
+            estimatedKcal = lastEstimatedKcal,
         )
         lastStatus = null
         lastSteps = null
+        lastEstimatedKcal = null
         samples = mutableListOf()
         stoppedInARow = 0
         maxSpeedKmh = 0.0

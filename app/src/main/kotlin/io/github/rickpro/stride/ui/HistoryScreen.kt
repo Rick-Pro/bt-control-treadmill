@@ -192,7 +192,7 @@ private fun WalkRow(walk: Workout, unit: MeasureUnit, zone: ZoneId, onClick: () 
             )
         }
         Text(
-            text = "${walk.kcal} kcal",
+            text = "${walk.bestKcal} kcal",
             style = MaterialTheme.typography.bodyMedium,
             color = StrideColors.Muted,
         )

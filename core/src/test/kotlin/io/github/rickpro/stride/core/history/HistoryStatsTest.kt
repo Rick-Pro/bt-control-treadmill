@@ -50,4 +50,11 @@ class HistoryStatsTest {
         assertEquals(0, HistoryStats.streakDays(walks, sundayEvening + 2 * dayMs, pst))
         assertEquals(0, HistoryStats.streakDays(emptyList(), sundayEvening, pst))
     }
+
+    @Test
+    fun `totals use the estimate where there is one and the pad's number where there is not`() {
+        val estimated = walk(1, 600, 0.5, kcal = 0).copy(estimatedKcal = 40)
+        val padOnly = walk(2, 300, 0.25, kcal = 20)
+        assertEquals(60, HistoryStats.totals(listOf(estimated, padOnly)).kcal)
+    }
 }
