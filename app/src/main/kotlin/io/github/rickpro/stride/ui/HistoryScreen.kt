@@ -53,6 +53,7 @@ import java.time.format.FormatStyle
 @Composable
 fun HistoryScreen(history: HistoryStore, unit: MeasureUnit, onBack: () -> Unit, onOpen: (String) -> Unit) {
     val context = LocalContext.current
+    val shareSubject = stringResource(R.string.history_share_subject)
     val workouts by history.workouts.collectAsStateWithLifecycle()
     var toDelete by remember { mutableStateOf<Workout?>(null) }
     val zone = remember { ZoneId.systemDefault() }
@@ -63,7 +64,7 @@ fun HistoryScreen(history: HistoryStore, unit: MeasureUnit, onBack: () -> Unit, 
                 iconRes = R.drawable.ic_share,
                 contentDescription = stringResource(R.string.btn_share),
                 enabled = workouts.isNotEmpty(),
-                onClick = { shareText(context, context.getString(R.string.history_share_subject), history.exportCsv()) },
+                onClick = { shareText(context, shareSubject, history.exportCsv()) },
             )
         }
 
