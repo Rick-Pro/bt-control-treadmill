@@ -23,6 +23,24 @@ class PadCapturesTest {
             "00 00 00 00 00 00 00 00 00 00 00 00 00 16 43",
     )
 
+    /**
+     * Build 3 log, belt about to move: the pad beeps and counts down. Flags 9A (80 imperial panel, 18 starting, 02 always
+     * set), session id CC, and an unknown u16 ("load") of 01 58 at inner offset 43 to 44.
+     */
+    private val starting = hex(
+        "4D 04 02 2F 68 2F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 CC 1B 9A 17 70 00 05 00 " +
+        "00 00 00 00 00 00 00 00 00 00 00 01 58 59 43",
+    )
+
+    /**
+     * Build 3 log, two seconds into a walk: speed 1.60, target 2.40, 1 m, 2000 ms. Flags 8A (running), session id CD,
+     * and the same kind of unknown u16 ("load") of 01 96, this time at inner offset 41 to 42.
+     */
+    private val running = hex(
+        "4D 04 0A 2F 68 2F 00 06 40 09 60 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 07 D0 CD 1B 8A 17 70 00 05 00 " +
+        "00 00 00 00 00 00 00 00 00 01 96 00 00 7F 43",
+    )
+
     private fun hex(text: String) = text.replace(" ", "").chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
     private fun wrapped() = PitPatLink(PitPatVariant.WRAPPED)
@@ -129,6 +147,64 @@ class PadCapturesTest {
             assertEquals(i % 256, counter)
             if (last == 255) assertEquals(0, counter)
             last = counter
+        }
+    }
+
+    @Test
+    fun `the STARTING capture decodes to the countdown`() {
+        val status = wrapped().decode(starting, 0).single()
+        assertEquals(RunState.STARTING, status.state)
+        assertTrue(status.isMoving) // the app treats the countdown as moving: STOP must work during it
+        assertEquals(0.0, status.speedKmh, 1e-9)
+        assertEquals(0.0, status.targetSpeedKmh, 1e-9)
+        assertEquals(0.0, status.distanceKm, 1e-9) // the leftover counter from the last walk was reset on start
+        assertEquals(0L, status.durationSeconds)
+        assertEquals(6.0, status.maxSpeedKmh!!, 1e-9)
+        assertEquals(27, status.firmware)
+    }
+
+    @Test
+    fun `the RUNNING capture decodes to a walk two seconds in`() {
+        val status = wrapped().decode(running, 0).single()
+        assertEquals(RunState.RUNNING, status.state)
+        assertEquals(1.60, status.speedKmh, 1e-9)
+        assertEquals(2.40, status.targetSpeedKmh, 1e-9)
+        assertEquals(0.001, status.distanceKm, 1e-9) // distance is in metres: 1 m
+        assertEquals(2L, status.durationSeconds) // duration is in milliseconds: 2000 ms
+        assertEquals(0L, status.steps) // this pad never fills in steps or calories
+        assertEquals(0, status.kcal)
+        assertEquals(6.0, status.maxSpeedKmh!!, 1e-9)
+        assertEquals(27, status.firmware)
+    }
+
+    @Test
+    fun `the three captured walk frames follow on one link as a countdown then a walk`() {
+        val link = wrapped()
+        assertEquals(RunState.STOPPED, link.decode(long, 0).single().state) // idle, flags 82
+        assertEquals(RunState.STARTING, link.decode(starting, 100).single().state) // flags 9A
+        assertEquals(RunState.RUNNING, link.decode(running, 3_200).single().state) // flags 8A
+    }
+
+    @Test
+    fun `flags 82 9A and 8A are stopped starting and running, whatever the unknown bits say`() {
+        fun state(flags: Int) = PitPatProtocol.parseStatus(TestFrames.status(flags = flags))!!.state
+        assertEquals(RunState.STOPPED, state(0x82))
+        assertEquals(RunState.STARTING, state(0x9A))
+        assertEquals(RunState.RUNNING, state(0x8A))
+        // 80 is the imperial panel and 01 is Wi-Fi: neither changes the run state. 02 is set in every capture.
+        assertEquals(RunState.STOPPED, state(0x03))
+        assertEquals(RunState.RUNNING, state(0x09))
+        assertEquals(RunState.PAUSED, state(0x92))
+    }
+
+    @Test
+    fun `the new captures are valid frames with a matching length and trailer`() {
+        for (capture in listOf(starting, running)) {
+            assertEquals(51, capture.size)
+            assertEquals(47, capture[3].toInt() and 0xFF)
+            val inner = PitPatWrapper.unwrap(capture)!!
+            assertEquals(47, inner.size)
+            assertTrue(PitPatProtocol.isValidFrame(inner))
         }
     }
 }
