@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stride, your walking pad on one screen</title>
+<meta name="description" content="Stride is a one-screen Android remote for PitPat walking pads. Start, pause, stop, speed, live numbers and every walk saved on your phone. No account, no internet, no ads.">
+<style>
+  :root {
+    --bg: #0f1419; --surface: #171d24; --line: #232b35; --text: #e6edf3; --muted: #909dab;
+    --green: #3fb950; --red: #f85149; --amber: #d29922;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--green); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+  header { padding: 28px 0 8px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; }
+  .brand .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(63,185,80,.18); }
+  nav a { color: var(--muted); margin-left: 18px; font-size: 15px; }
+  .hero { display: grid; grid-template-columns: 1fr; gap: 32px; align-items: center; padding: 36px 0 24px; }
+  h1 { font-size: 40px; line-height: 1.1; margin: 0 0 14px; letter-spacing: -0.5px; }
+  .lead { color: var(--muted); font-size: 18px; margin: 0 0 22px; max-width: 34em; }
+  .btn { display: inline-block; background: var(--green); color: #0b1a0f; font-weight: 700; padding: 14px 22px;
+    border-radius: 12px; }
+  .btn:hover { text-decoration: none; filter: brightness(1.08); }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); margin-left: 10px; }
+  .quiet { color: var(--muted); font-size: 14px; margin-top: 14px; }
+
+  /* CSS mock of the control screen */
+  .phone { width: 300px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 36px; padding: 18px 16px 22px; box-shadow: 0 30px 60px rgba(0,0,0,.45); }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; }
+  .speed { text-align: center; margin: 22px 0 6px; }
+  .speed b { font-size: 76px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .speed span { color: var(--muted); font-size: 14px; display: block; margin-top: 4px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0; }
+  .stat { background: var(--bg); border-radius: 14px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .cluster { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; }
+  .round { width: 64px; height: 64px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; }
+  .play { width: 84px; height: 84px; background: var(--green); color: #0b1a0f; border: 0; font-size: 30px; }
+  .stop { background: var(--red); color: #fff; text-align: center; font-weight: 700; padding: 18px;
+    border-radius: 16px; letter-spacing: 2px; margin-top: 12px; }
+  .chips { display: flex; gap: 8px; margin-top: 14px; }
+  .chips span { flex: 1; text-align: center; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 999px; padding: 8px 0; font-size: 13px; }
+
+  section { padding: 28px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 24px; margin: 0 0 18px; }
+  .features { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); }
+  .card .tag { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: middle; }
+  ol { padding-left: 22px; color: var(--muted); }
+  ol li { margin-bottom: 8px; }
+  ol b { color: var(--text); font-weight: 600; }
+  .promise { font-size: 20px; text-align: center; padding: 28px 0; color: var(--text); }
+  .promise span { color: var(--green); }
+  footer { padding: 28px 0 44px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+  @media (min-width: 760px) {
+    .hero { grid-template-columns: 1.2fr 1fr; }
+    h1 { font-size: 52px; }
+    .features { grid-template-columns: 1fr 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="dot"></span>Stride</div>
+    <nav><a href="#what">What it does</a><a href="#install">Install</a><a href="https://github.com/Rick-Pro/bt-control-treadmill">GitHub</a></nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>Your walking pad, one screen.</h1>
+      <p class="lead">Stride is a small Android remote for PitPat walking pads. It connects to the pad over Bluetooth, shows the numbers that matter, and gets out of the way.</p>
+      <a class="btn" href="https://github.com/Rick-Pro/bt-control-treadmill/releases">Get the APK</a>
+      <a class="btn ghost" href="#install">How to install</a>
+      <p class="quiet">Android 13 or newer. Works with PitPat pads that use Bluetooth service FBA0, such as the BA06.</p>
+    </div>
+    <div class="phone" aria-hidden="true">
+      <div class="status"><i></i>BA06-73F6 connected</div>
+      <div class="speed"><b>2.0</b><span>mph</span></div>
+      <div class="stats">
+        <div class="stat"><b>32:10</b><span>time</span></div>
+        <div class="stat"><b>1.07</b><span>miles</span></div>
+        <div class="stat"><b>128</b><span>kcal</span></div>
+        <div class="stat"><b>3,540</b><span>steps</span></div>
+      </div>
+      <div class="cluster">
+        <div class="round">&minus;</div>
+        <div class="round play">&#10074;&#10074;</div>
+        <div class="round">+</div>
+      </div>
+      <div class="stop">STOP</div>
+      <div class="chips"><span>1.0</span><span>1.5</span><span>2.0</span><span>2.5</span></div>
+    </div>
+  </div>
+
+  <section id="what">
+    <h2>What it does</h2>
+    <div class="features">
+      <div class="card">
+        <h3><span class="tag" style="background:var(--green)"></span>Start, pause, stop and speed in one tap</h3>
+        <p>Big buttons where your thumb already is. Speed up or down one step at a time, or jump to a preset. STOP is wide, red and always first in line.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag" style="background:var(--amber)"></span>Live time, distance, calories, steps</h3>
+        <p>Straight from the pad, in mph or km. The screen stays on while the belt moves. If the link drops, the phone buzzes and tells you the belt is still running.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag" style="background:var(--red)"></span>Every walk saved on your phone</h3>
+        <p>Each walk lands in History with its time, distance, average speed and a speed chart. Weekly and all-time totals. Delete what you do not want. Share as CSV.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="promise"><span>No account.</span> <span>No internet.</span> <span>No ads.</span> The app has no internet permission at all.</div>
+
+  <section id="install">
+    <h2>Install</h2>
+    <ol>
+      <li><b>Download.</b> On the phone, open the <a href="https://github.com/Rick-Pro/bt-control-treadmill/releases">latest release</a> and tap the APK file.</li>
+      <li><b>Allow installs from your browser.</b> Android asks once. Tap Settings, turn on Allow from this source, go back.</li>
+      <li><b>Let Play Protect scan it.</b> Tap Scan app, wait a few seconds, then Install.</li>
+      <li><b>Set it up once.</b> Close the PitPat app, turn the pad on, open Stride and tap Find. Tap the pad when it shows up. Every later launch reconnects on its own.</li>
+    </ol>
+  </section>
+
+  <footer>
+    Built by <a href="https://ricardouzcategui.com">Ricardo Uzcategui</a>. Protocol work credited in the <a href="https://github.com/Rick-Pro/bt-control-treadmill/blob/main/THIRD_PARTY_NOTICES.md">repo</a>. All rights reserved for now.
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds install next to a release build (applicationIdSuffix .debug), so they get their own label. -->
+<resources>
+    <string name="app_name">Stride Dev</string>
+</resources>

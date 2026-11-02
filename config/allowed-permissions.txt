@@ -1,0 +1,16 @@
+# Permissions the app may request. CI fails if a built APK asks for anything else, which is what keeps
+# "no account, no internet, no ads, no telemetry" true. Adding a line needs a written reason in the PR
+# (docs/plan.md section 6). {applicationId} stands for the package of the APK being checked.
+#
+# There is NO android.permission.INTERNET on purpose. Stride never talks to anything but the treadmill.
+
+# Bluetooth Low Energy (Android 12 and newer): find the treadmill and talk to it. The scan is flagged
+# neverForLocation in the manifest, so Android does not treat it as a location permission.
+android.permission.BLUETOOTH_SCAN
+android.permission.BLUETOOTH_CONNECT
+# One vibration pattern when the link drops while the belt moves, or when STOP is not confirmed.
+android.permission.VIBRATE
+
+# Added by androidx.core itself: a signature-only permission that keeps the app's own runtime broadcast
+# receivers private. Other apps cannot hold it, and it grants no access to anything.
+{applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

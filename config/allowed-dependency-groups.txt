@@ -1,0 +1,18 @@
+# Groups (or group:artifact) the release app may ship. CI lists the release runtime classpath and fails on
+# anything else, so no ad, analytics or tracking SDK can slip in through a transitive dependency.
+# Patterns are shell globs. Adding a line needs a written reason in the PR (AGENTS.md, mission-control rule 17).
+
+# This repo's own modules.
+project :core
+# AndroidX: Compose, activity, lifecycle, core and what they pull in.
+androidx.*
+# Kotlin standard library and coroutines, needed by Kotlin and Compose.
+org.jetbrains.kotlin
+org.jetbrains.kotlin.*
+org.jetbrains.kotlinx
+org.jetbrains.kotlinx.*
+# Annotation-only jars pulled in by the Kotlin standard library and AndroidX. No code runs from them.
+org.jetbrains:annotations
+org.jspecify:jspecify
+# A one-interface jar that AndroidX uses for async results.
+com.google.guava:listenablefuture

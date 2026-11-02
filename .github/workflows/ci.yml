@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: Core tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Core unit tests (no Android SDK needed)
+        run: ./gradlew --stacktrace -Pstride.coreOnly=true :core:test
+
+  app:
+    name: App build, lint and allow-lists
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Debug APK, lint, unit tests, release (R8) APK
+        run: scripts/ci-gradle.sh :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:assembleRelease
+      - name: Permission allow-list (config/allowed-permissions.txt)
+        run: scripts/ci-check-permissions.sh app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk
+      - name: Dependency allow-list (config/allowed-dependency-groups.txt)
+        run: scripts/ci-check-dependencies.sh
+      - name: APK sizes (release 8 MB or less)
+        run: scripts/ci-apk-sizes.sh
+      - name: Debug APK signed with the committed debug key
+        run: scripts/ci-check-debug-signer.sh app/build/outputs/apk/debug/app-debug.apk
+      - name: Keep the debug APK for phone testing
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: stride-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+          if-no-files-found: error
+      - name: Keep reports when something failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

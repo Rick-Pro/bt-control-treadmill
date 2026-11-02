@@ -1,0 +1,27 @@
+# Build output
+build/
+.gradle/
+*.apk
+*.aab
+*.class
+# Signing keys and secrets: never commit
+*.jks
+*.keystore
+# Exception: the committed debug key (decision D6 in docs/plan.md). It uses the public, standard Android debug key
+# settings and signs test builds only, so it is not a secret. Never add a release key here.
+!app/debug.keystore
+*.p12
+*.pfx
+keystore.properties
+local.properties
+.env
+.env.*
+!.env.example
+# Editors and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+captures/
+.kotlin/
+Thumbs.db
