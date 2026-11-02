@@ -67,6 +67,17 @@ data class TreadmillStatus(
     val firmware: Int = 0,
 ) {
     val isMoving: Boolean get() = state == RunState.RUNNING || state == RunState.STARTING
+
+    /**
+     * The pad reports STOPPED at once after STOP while the belt is still slowing down (1.9 km/h to 0 in about three
+     * seconds on Ricardo's pad). That is "stopping", not stopped.
+     */
+    val isStopping: Boolean get() = state == RunState.STOPPED && speedKmh >= STOPPING_SPEED_KMH
+
+    companion object {
+        /** Below this the belt counts as stopped; the pad's own display shows 0.0 up to here. */
+        const val STOPPING_SPEED_KMH = 0.1
+    }
 }
 
 /** Expands a 16-bit UUID (e.g. 0xFBA0) with the Bluetooth base UUID. */
