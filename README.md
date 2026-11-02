@@ -65,6 +65,8 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 - Four preset chips (1.0, 1.5, 2.0, 2.5 mph by default; change them in Settings).
 - A small row: units, History, Settings.
 
+When the app opens, Android's own splash screen shows the Stride icon on the app's dark background until the first screen is ready. It is the system splash from the theme alone: no library, no extra screen and no added wait.
+
 The screen stays on while the belt moves. Buttons that cannot work right now say why (not connected, no data yet).
 
 **History.** Every walk longer than 30 seconds is saved when the belt stops: date, time, distance, average and max speed, calories, steps, and a speed chart. Totals for this week and all time at the top. Long-press a walk to delete it (it asks first). Share exports every walk as CSV. Walks are not editable; the numbers are the pad's.

@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dark only. The window and the system splash paint the Stride background before Compose draws,
-so there is no white flash. Light bar icons on the dark bars. -->
+so there is no white flash. Light bar icons on the dark bars.
+The splash is Android 12's own (minSdk is 33, so no library and no extra activity): the Stride icon on the app
+background, shown until the first frame is drawn. There is no delay and no animation time set here. -->
 <resources>
     <style name="Theme.Stride" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/stride_bg</item>
         <item name="android:colorBackground">@color/stride_bg</item>
         <item name="android:windowSplashScreenBackground">@color/stride_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>
