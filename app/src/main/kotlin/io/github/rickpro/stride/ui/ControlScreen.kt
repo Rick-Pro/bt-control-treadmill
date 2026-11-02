@@ -1,5 +1,13 @@
 package io.github.rickpro.stride.ui
 
+import android.os.SystemClock
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +37,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,13 +48,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.rickpro.stride.R
+import io.github.rickpro.stride.core.control.StartCountdown
 import io.github.rickpro.stride.core.protocol.RunState
 import io.github.rickpro.stride.core.units.MeasureUnit
 import io.github.rickpro.stride.core.units.Units
@@ -54,6 +68,7 @@ import io.github.rickpro.stride.ui.components.StatTile
 import io.github.rickpro.stride.ui.components.StrideIconButton
 import io.github.rickpro.stride.ui.components.openBluetoothSettings
 import io.github.rickpro.stride.ui.theme.StrideColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -315,35 +330,51 @@ private fun ConfirmConnectionAction(action: Confirm, deviceName: String?, moving
     )
 }
 
-/** The big number: current belt speed, with the belt state and the target speed under it. */
+/**
+ * The big number: current belt speed, with the belt state and the target speed under it. While the pad counts down it
+ * shows the 3-2-1 instead; PAUSED is a clear badge; and a STOPPED pad whose belt still moves says "Stopping".
+ */
 @Composable
 private fun SpeedReadout(state: TreadmillManager.State) {
     val status = state.status
+    if (status?.state == RunState.STARTING) {
+        StartingCountdown(startedAtMs = state.startingSinceMs)
+        return
+    }
     val unit = state.unit
     val speedKmh = status?.speedKmh ?: 0.0
-    val beltLabel = when (status?.state) {
-        RunState.RUNNING -> stringResource(R.string.belt_running)
-        RunState.STARTING -> stringResource(R.string.belt_starting)
-        RunState.PAUSED -> stringResource(R.string.belt_paused)
-        RunState.STOPPED -> stringResource(R.string.belt_stopped)
-        null -> ""
+    val stopping = status?.isStopping == true
+    val paused = status?.state == RunState.PAUSED
+    val beltLabel = when {
+        stopping -> stringResource(R.string.belt_stopping)
+        else -> when (status?.state) {
+            RunState.RUNNING -> stringResource(R.string.belt_running)
+            RunState.STARTING -> stringResource(R.string.belt_starting)
+            RunState.PAUSED -> stringResource(R.string.belt_paused)
+            RunState.STOPPED -> stringResource(R.string.belt_stopped)
+            null -> ""
+        }
     }
-    val beltColor = when (status?.state) {
-        RunState.RUNNING -> StrideColors.Accent
-        RunState.STARTING -> StrideColors.Warning
+    val beltColor = when {
+        stopping || paused -> StrideColors.Warning
+        status?.state == RunState.RUNNING -> StrideColors.Accent
         else -> StrideColors.Muted
     }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = beltLabel.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = beltColor,
-        )
+        if (paused) {
+            PausedBadge(label = beltLabel)
+        } else {
+            Text(
+                text = beltLabel.uppercase(),
+                style = if (stopping) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
+                color = beltColor,
+            )
+        }
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = Units.speedText(speedKmh, unit),
                 style = MaterialTheme.typography.displayLarge,
-                color = if (status == null) StrideColors.Muted else StrideColors.Text,
+                color = if (status == null || paused) StrideColors.Muted else StrideColors.Text,
             )
             Spacer(Modifier.width(8.dp))
             Text(
@@ -356,11 +387,91 @@ private fun SpeedReadout(state: TreadmillManager.State) {
         // The target is worth showing while it differs from the belt: during a change, or before a start.
         val showTarget = status == null || status.state != RunState.RUNNING || abs(status.targetSpeedKmh - speedKmh) > 0.05
         Text(
-            text = if (showTarget) {
-                stringResource(R.string.target_speed, Units.speedText(state.targetKmh, unit), Units.speedUnitLabel(unit))
-            } else {
-                " "
+            text = when {
+                paused -> stringResource(R.string.paused_hint)
+                showTarget -> stringResource(R.string.target_speed, Units.speedText(state.targetKmh, unit), Units.speedUnitLabel(unit))
+                else -> " "
             },
+            style = MaterialTheme.typography.bodyMedium,
+            color = StrideColors.Muted,
+        )
+    }
+}
+
+/** A clear "PAUSED" pill, so a stopped-looking screen is never mistaken for a stopped belt. */
+@Composable
+private fun PausedBadge(label: String) {
+    Row(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.large)
+            .background(StrideColors.WarningDim)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_pause),
+            contentDescription = null,
+            tint = StrideColors.Warning,
+            modifier = Modifier.size(24.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(label.uppercase(), style = MaterialTheme.typography.headlineSmall, color = StrideColors.Warning)
+    }
+}
+
+/**
+ * The pad is beeping and counting down before the belt moves (about three seconds): a big "Starting", a pulsing ring
+ * and a 3-2-1 count. The count is paced by the clock since the pad reported STARTING; the screen changes by itself
+ * when the pad reports RUNNING.
+ */
+@Composable
+private fun StartingCountdown(startedAtMs: Long?) {
+    var nowMs by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(startedAtMs) {
+        while (true) {
+            nowMs = SystemClock.elapsedRealtime()
+            delay(100)
+        }
+    }
+    val digit = StartCountdown.digitAt(if (startedAtMs == null) 0L else nowMs - startedAtMs)
+
+    val pulse = rememberInfiniteTransition(label = "starting ring")
+    val scale by pulse.animateFloat(
+        initialValue = 0.88f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ring scale",
+    )
+    val alpha by pulse.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ring alpha",
+    )
+    val description = stringResource(R.string.starting_description, digit)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = description },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.belt_starting).uppercase(),
+            style = MaterialTheme.typography.headlineMedium,
+            color = StrideColors.Warning,
+        )
+        Spacer(Modifier.height(12.dp))
+        Box(Modifier.size(168.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 8.dp.toPx()
+                val radius = (size.minDimension / 2f - stroke) * scale
+                drawCircle(color = StrideColors.Warning.copy(alpha = alpha), radius = radius, style = Stroke(width = stroke))
+            }
+            Text(text = digit.toString(), style = MaterialTheme.typography.displayLarge, color = StrideColors.Text)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.starting_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = StrideColors.Muted,
         )
@@ -421,7 +532,7 @@ private fun ControlCluster(state: TreadmillManager.State, ready: Boolean, manage
     ) {
         RoundTonalButton(
             label = stringResource(R.string.btn_speed_down),
-            enabled = connected && !atMin,
+            enabled = connected && running && !atMin,
             onClick = { manager.changeSpeed(-STEP_KMH) },
         )
         StartPauseButton(
@@ -433,7 +544,7 @@ private fun ControlCluster(state: TreadmillManager.State, ready: Boolean, manage
         )
         RoundTonalButton(
             label = stringResource(R.string.btn_speed_up),
-            enabled = connected && !atMax,
+            enabled = connected && running && !atMax,
             onClick = { manager.changeSpeed(STEP_KMH) },
         )
     }

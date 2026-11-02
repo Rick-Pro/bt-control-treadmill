@@ -17,6 +17,10 @@
     <string name="belt_starting">Starting</string>
     <string name="belt_running">Walking</string>
     <string name="belt_paused">Paused</string>
+    <string name="belt_stopping">Stopping</string>
+    <string name="starting_hint">Get ready. The belt starts when the count ends.</string>
+    <string name="starting_description">Starting, %1$d</string>
+    <string name="paused_hint">Tap Resume to carry on.</string>
 
     <!-- Control screen -->
     <string name="stat_time">Time</string>

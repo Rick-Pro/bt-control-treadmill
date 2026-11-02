@@ -59,7 +59,8 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 - Status line: the pad's name and Connected, Connecting, Reconnecting or Not found.
 - The speed, big, in mph (or km/h, one tap in Settings).
 - Four numbers: time, distance, calories, steps. Steps are marked **est.** when the pad does not count them and Stride estimates them from the distance.
-- **SPD -** and **SPD +** on either side of **Start / Pause**. Each tap moves the target one step (0.1 km/h, the pad's own step). Start sends the last speed you used; Pause holds the belt and the time.
+- **SPD -** and **SPD +** on either side of **Start / Pause**. Each tap moves the target one step (0.1 km/h, the pad's own step). They work while the belt runs; the preset chips pick the speed for the next start. Start sends the last speed you used; Pause holds the belt and the time.
+- **The countdown.** After Start the pad beeps for about 3 seconds before the belt moves. The screen shows a big **Starting** with a pulsing ring and a 3-2-1 count, and changes by itself when the pad says the belt is running. **Paused** is a clear badge, and **Stopping** shows while the pad says stopped but the belt is still slowing down.
 - **STOP**, wide and red. It goes first in line, before anything else waiting to be sent, and is resent until the belt stops.
 - Four preset chips (1.0, 1.5, 2.0, 2.5 mph by default; change them in Settings).
 - A small row: units, History, Settings.

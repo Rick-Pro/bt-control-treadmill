@@ -19,6 +19,7 @@ import io.github.rickpro.stride.core.control.Command
 import io.github.rickpro.stride.core.control.CommandKind
 import io.github.rickpro.stride.core.control.CommandScheduler
 import io.github.rickpro.stride.core.control.SessionController
+import io.github.rickpro.stride.core.control.StartCountdown
 import io.github.rickpro.stride.core.control.StepEstimator
 import io.github.rickpro.stride.core.history.WorkoutRecorder
 import io.github.rickpro.stride.core.protocol.PitPatLink
@@ -108,6 +109,8 @@ class TreadmillManager(
         val lastError: String? = null,
         /** The user chose Disconnect: nothing reconnects on its own until Reconnect (or a new treadmill) is chosen. */
         val disconnectedByUser: Boolean = false,
+        /** When the pad's start countdown (STARTING) began, on the manager's monotonic clock, or null. */
+        val startingSinceMs: Long? = null,
     ) {
         val isActive: Boolean get() = link == Link.CONNECTING || link == Link.CONNECTED || link == Link.RECONNECTING
         val isConnected: Boolean get() = link == Link.CONNECTED
@@ -125,6 +128,7 @@ class TreadmillManager(
     private val scheduler = CommandScheduler()
     private val wakeWriter = Channel<Unit>(Channel.CONFLATED)
     private val stepEstimator = StepEstimator()
+    private val countdown = StartCountdown()
     private val recorder = WorkoutRecorder()
     private val incomingLog = IncomingLog()
     /** Wire format of the current connection (header, counter, speed scale); null while not connected. */
@@ -362,6 +366,7 @@ class TreadmillManager(
         val variant = checkNotNull(connection.transport) { "connected without a transport" }.variant
         codec = PitPatLink(variant, log::add)
         stepEstimator.reset()
+        countdown.reset()
         scheduler.clear()
         incomingLog.reset()
         lastDataAtMs = now()
@@ -402,13 +407,17 @@ class TreadmillManager(
         val wasMoving = _state.value.status?.isMoving == true
         scheduler.clear()
         controller.onLinkDown()
+        countdown.reset()
         codec = null
         recorder.onLinkDown(System.currentTimeMillis())?.let { finished ->
             historyStore.add(finished)
             log.add("Walk saved: ${finished.durationSeconds} s, ${"%.2f".format(Locale.ROOT, finished.distanceKm)} km")
         }
         _state.update {
-            it.copy(status = null, fresh = false, steps = null, speedRange = controller.speedRange, recording = recorder.isRecording)
+            it.copy(
+                status = null, fresh = false, steps = null, speedRange = controller.speedRange,
+                recording = recorder.isRecording, startingSinceMs = null,
+            )
         }
         if (!byUser) {
             _state.update { it.copy(alert = if (wasMoving) Alert.LINK_LOST_WHILE_MOVING else Alert.LINK_LOST) }
@@ -424,6 +433,12 @@ class TreadmillManager(
         val statuses = codec?.decode(value, now).orEmpty()
         incomingLog.line(value, statuses.lastOrNull(), now)?.let(log::add)
         for (status in statuses) {
+            countdown.onStatus(status.state, now)?.let { ended ->
+                log.add(
+                    "Countdown: STARTING lasted ${"%.1f".format(Locale.ROOT, ended.durationMs / 1000.0)} s, " +
+                        "then ${ended.next.name.lowercase(Locale.ROOT)}",
+                )
+            }
             handle(controller.onStatus(status, now))
             val steps = stepEstimator.update(status)
             recorder.update(status, steps, System.currentTimeMillis())?.let { finished ->
@@ -433,6 +448,7 @@ class TreadmillManager(
             _state.update {
                 it.copy(
                     status = status, fresh = true, steps = steps, recording = recorder.isRecording,
+                    startingSinceMs = countdown.startedAtMs,
                     alert = if (it.alert == Alert.STOP_NOT_CONFIRMED && !status.isMoving) null else it.alert,
                 )
             }
