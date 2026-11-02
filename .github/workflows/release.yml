@@ -1,6 +1,12 @@
 name: Release
 
-# Manual only: Actions, Release, Run workflow (from main), enter the version, for example v0.1.0.
+# A merge to main that changes VERSION publishes that version as a real numbered release, by itself (decision D30).
+# There are no test builds and no pre-releases. A manual run is the fallback: Actions, Release, Run workflow (from
+# main), enter the version, for example v1.0.1.
+# 0. "Decide what to release" reads VERSION. On a push, if the tag v<VERSION> already exists it prints the notice
+#    "VERSION unchanged, nothing to release" and stops without building. If the tag is missing, the release runs
+#    for v<VERSION>. A release that fails leaves no tag, so the next push to main tries again. A manual run always
+#    goes on to the preflight, which refuses a tag that does not match VERSION.
 # 1. scripts/release-preflight.sh checks the tag, VERSION, that the release and tag are new, and that the release
 #    key settings exist, before anything is built. It lists every problem at once.
 # 2. Core and app unit tests, then the release (R8) APK and the release App Bundle, stamped with that version.
@@ -13,6 +19,8 @@ name: Release
 # Settings (names only): secrets STRIDE_KEYSTORE_BASE64 and STRIDE_KEYSTORE_PASSWORD, variables STRIDE_KEY_ALIAS
 # and STRIDE_CERT_SHA256. scripts/make-release-key.sh sets all four. Only this workflow reads them.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -28,12 +36,63 @@ permissions:
   contents: write
 
 jobs:
+  decide:
+    name: Decide what to release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.decide.outputs.tag }}
+      release: ${{ steps.decide.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read VERSION and look for its tag
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            # Manual run: the tag is what was typed. The preflight checks it against VERSION.
+            echo "tag=${INPUT_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "Manual run for ${INPUT_VERSION} (VERSION is ${version})." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          tag="v${version}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          # Only a 404 means "no such tag". Any other API failure stops the run: never guess.
+          if out="$(gh api "repos/${GH_REPO}/git/ref/tags/${tag}" 2>&1)"; then
+            exists=true
+          elif grep -q 'HTTP 404' <<< "$out"; then
+            exists=false
+          else
+            echo "::error title=Could not check for the tag ${tag}::${out}"
+            exit 1
+          fi
+          if [ "$exists" = true ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Nothing to release::VERSION unchanged, nothing to release (${tag} already exists)."
+            echo "VERSION unchanged, nothing to release (${tag} already exists)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "VERSION is ${version} and ${tag} does not exist yet: releasing it." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   release:
     name: Build, sign and publish
+    needs: decide
+    if: needs.decide.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      TAG: ${{ inputs.version }}
+      TAG: ${{ needs.decide.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:

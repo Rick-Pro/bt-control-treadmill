@@ -42,7 +42,7 @@ Works on Android 13 or newer. Tested on a Google Pixel 8 Pro.
 
 Stride is not on Google Play, so you install the file yourself. No root, no account.
 
-1. **Download.** On the phone, open the [latest release](https://github.com/Rick-Pro/stride-android/releases) and tap `stride-vX.Y.Z.apk`. If the browser warns that the file can harm your device, tap Download anyway.
+1. **Download.** On the phone, open the [latest release](https://github.com/Rick-Pro/stride-android/releases/latest) and tap `stride-vX.Y.Z.apk`. If the browser warns that the file can harm your device, tap Download anyway.
 2. **Open it.** Tap Open when the download finishes, or open Files, then Downloads, and tap the file.
 3. **Allow installs from your browser.** Android says your browser is not allowed to install unknown apps. Tap Settings, turn on Allow from this source, and go back. You can turn it off again later in Settings, Apps, Special app access, Install unknown apps.
 4. **Let Google Play Protect scan it.** Play Protect has not seen Stride before, so it says App scan recommended. Tap Scan app. It takes a few seconds.
@@ -54,8 +54,6 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 **Updating.** Download the new file and install it the same way. It installs over the old copy and keeps your settings and history, because every release carries the same certificate.
 
 **Check the download (optional).** Each release has a `.sha256` file next to each file it carries (the APK, and the `.aab` that is only for the Play Console). On a computer, put both in one folder and run `sha256sum -c stride-vX.Y.Z.apk.sha256`. The release notes also list the certificate SHA-256, which is the same for every release.
-
-**Test builds (for Ricardo's own devices).** The [Latest test build](https://github.com/Rick-Pro/stride-android/releases/tag/test-latest) is rebuilt after every change to `main`. Download `stride-test-<version>.apk` (the version is in the file name) and install it the same way. It shows up as **Stride Dev**, next to a release copy, and each new test build installs over the last one.
 
 **Uninstall.** Touch and hold the Stride icon, tap App info, then Uninstall. Android removes the app, its settings and its history. Share a walk as CSV first if you want to keep it.
 
@@ -143,12 +141,12 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `docs/protocol.md` | The PitPat BLE protocol with the exact frames and their sources |
 | `docs/index.html` | The landing page (GitHub Pages from `docs/`) |
 | `core/` | Pure Kotlin logic with JUnit 4 tests, no Android imports: `protocol` (frames, the three pad layouts and how one is picked, the wrapped-pad link), `control` (STOP-first queue, safety rules, step estimate), `units` (mph and miles), `history` (walk record, walk detection, JSON lines, totals) |
-| `app/` | The Android app: `ble/` (permissions, scanner, GATT), `session/` (the treadmill manager that owns the link, settings, haptics, log), `history/` (the walks file), `ui/` (Setup, Control, History, Settings, theme). `debug.keystore` is the public Android debug key for test builds, the same file as Kestrel's, not a secret (decisions D6 and D11) |
+| `app/` | The Android app: `ble/` (permissions, scanner, GATT), `session/` (the treadmill manager that owns the link, settings, haptics, log), `history/` (the walks file), `ui/` (Setup, Control, History, Settings, theme). `debug.keystore` is the public Android debug key for CI's debug builds, the same file as Kestrel's, not a secret (decisions D6 and D11) |
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradlew` | Gradle build. All versions are in `gradle/libs.versions.toml` |
-| `VERSION` | The next release version. The Release workflow refuses a tag that does not match |
+| `VERSION` | The version of the build. A merge to `main` that changes it publishes that release by itself; the preflight refuses a tag that does not match |
 | `gradle.properties` | Gradle settings: JVM memory, build cache, parallel builds, AndroidX, Kotlin code style |
 | `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/` | The Sponsor button's targets (GitHub Sponsors, Buy Me a Coffee and a Stripe link) and the Bug report form |
-| `.github/workflows/` | `ci.yml`: core tests, then the app build, lint, allow-lists and APK size, on every PR and push to main. `test-build.yml`: the rolling Latest test build after each push to main. `release.yml`: the manual Release (Actions, Release, Run workflow, vX.Y.Z), see Releasing a new version |
+| `.github/workflows/` | `ci.yml`: core tests, then the app build, lint, allow-lists and APK size, on every PR and push to main. `release.yml`: the Release, which runs on every push to main and publishes `v<VERSION>` when that tag is new (it can also be run by hand), see Releasing a new version |
 | `config/` | Allow-lists CI enforces: the permissions the app may ask for and the dependency groups it may ship |
 | `scripts/` | `ci-*.sh`: CI helpers (Gradle error summary, permission, dependency, APK size and debug signer checks). `core-check-offline.sh`: compiles and tests `core/` without network, with the Kotlin compiler from a local Gradle install. `make-release-key.sh`: makes the release key once and sets the GitHub secrets. `release-preflight.sh`, `release-sign.sh`, `release-sign-aab.sh`: the Release workflow's checks and signing of the APK and the App Bundle |
 | `.gitignore` | Keeps build output, signing keys (all but the public `app/debug.keystore`), `.env*` files and editor or OS junk out of git |
@@ -164,13 +162,16 @@ Any PR that adds, moves or removes a folder or key file updates this table.
 
 ## Releasing a new version
 
-1. In the release PR, set `VERSION` to the new X.Y.Z and update this README to match the build: What's new (one row per version) and the Repo map.
-2. Merge it to `main`.
-3. Go to Actions, Release, Run workflow, keep `main`, and enter `vX.Y.Z` (the same as `VERSION`).
-4. The workflow checks the tag, `VERSION` and the release key settings, runs the tests, builds the APK and the Android App Bundle, signs both with the release key (the APK with `apksigner`, the bundle with `jarsigner`), checks that their certificate matches `STRIDE_CERT_SHA256`, and that the APK's permissions are on the allow-list and its size is 8 MB or less, then publishes `stride-vX.Y.Z.apk` and `stride-vX.Y.Z.aab`, each with its `.sha256`. People install the `.apk`. The `.aab` is for the Google Play Console, see `docs/play-store.md`.
-5. **Play Protect check.** Install the new APK on the Pixel from the browser, tap Scan app when Play Protect asks, and note "This app looks safe" in the release PR.
+A merge to `main` that changes `VERSION` publishes that version as a real, numbered release, by itself (decision D30). There are no test builds and no pre-releases.
 
-**Once, before the first release:** Ricardo runs `scripts/make-release-key.sh` on his own computer. It makes the release key, prints its certificate SHA-256 and, with the GitHub CLI signed in, sets the secrets `STRIDE_KEYSTORE_BASE64` and `STRIDE_KEYSTORE_PASSWORD` and the variables `STRIDE_KEY_ALIAS` and `STRIDE_CERT_SHA256`. Back up the key file and its password in the password manager. If the key is lost, every installed copy must be uninstalled before a new version will install. Until the four settings exist, the Release workflow stops before building and names what is missing.
+1. In the PR that changes what users see, bump `VERSION` (patch, X.Y.Z+1, for a fix; minor for a feature) and add the row to What's new below. Update the Repo map if the PR adds, moves or removes a folder or key file. PRs that only touch docs or CI do not bump.
+2. Merge it to `main` once CI is green. The Release workflow runs on that push and reads `VERSION`. If the tag `vX.Y.Z` already exists it stops with the notice "VERSION unchanged, nothing to release". If not, it checks the tag, `VERSION` and the release key settings, runs the tests, builds the APK and the Android App Bundle, signs both with the release key (the APK with `apksigner`, the bundle with `jarsigner`), checks that their certificate matches `STRIDE_CERT_SHA256`, and that the APK's permissions are on the allow-list and its size is 8 MB or less, then publishes `stride-vX.Y.Z.apk` and `stride-vX.Y.Z.aab`, each with its `.sha256`, as the release `vX.Y.Z`. People install the `.apk`. The `.aab` is for the Google Play Console, see `docs/play-store.md`.
+3. If a release run fails, no tag is made, so the next push to `main` tries again. To run it by hand: Actions, Release, Run workflow, keep `main`, and enter `vX.Y.Z` (the same as `VERSION`). The preflight refuses a tag that does not match `VERSION`.
+4. **Play Protect check, right after the release.** Install the new APK on the Pixel from the browser, tap Scan app when Play Protect asks, and note "This app looks safe" in a comment on the PR that bumped `VERSION`. If it does not pass, the next patch release fixes it.
+
+Debug builds (the app named Stride Dev) exist only as artifacts of a pull request's CI run, kept for 7 days. They are never published.
+
+**The release key** was made once, before v1.0.0, by Ricardo running `scripts/make-release-key.sh` on his own computer. It makes the release key, prints its certificate SHA-256 and, with the GitHub CLI signed in, sets the secrets `STRIDE_KEYSTORE_BASE64` and `STRIDE_KEYSTORE_PASSWORD` and the variables `STRIDE_KEY_ALIAS` and `STRIDE_CERT_SHA256`. Back up the key file and its password in the password manager. If the key is lost, every installed copy must be uninstalled before a new version will install. Until the four settings exist, the Release workflow stops before building and names what is missing.
 
 The exact steps for the key are in `docs/plan.md`, section 5. Playbook: mission-control/sops/android-app-release.md.
 
@@ -178,6 +179,7 @@ The exact steps for the key are in `docs/plan.md`, section 5. Playbook: mission-
 
 | Version | What changed |
 |---|---|
+| 1.0.1 | Splash screen: the Stride icon now shows on a cold start (icon_preferred). |
 | 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. Open source under the MIT license, with a License line and a privacy policy link on the About screen, a CONTRIBUTING guide, a Bug report form, a Compatible pads list, and GitHub Sponsors, Buy Me a Coffee and Stripe links for anyone who wants to chip in. |
 
 ## Credits
