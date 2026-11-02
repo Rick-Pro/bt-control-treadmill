@@ -12,7 +12,7 @@ dependencyResolutionManagement {
         google { content { includeGroupByRegex("androidx.*|com\\.android.*|com\\.google\\.android.*") } }
     }
 }
-rootProject.name = "bt-control-treadmill"
+rootProject.name = "stride-android"
 include(":core")
 // The Android app module needs the Android SDK. Agent sandboxes do not have it, so it is only included when an SDK exists.
 // Agents run: ./gradlew -Pstride.coreOnly=true :core:test
