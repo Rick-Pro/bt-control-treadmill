@@ -73,7 +73,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 
 **Me (in Settings, optional).** Sex, height, weight and, if you like, age, in the units you picked. They stay in this app's private storage on the phone: no account, no network, no backup. They are used for three things only: the calorie estimate (the standard walking equation from the American College of Sports Medicine: MET from speed, then MET x kg x hours; it is an estimate, not a measurement); the step length for the step estimate (0.413 x height for women, 0.415 x height for men, in between for other); and your weight, sent to the pad in each command so the pad's own calorie count has it. The weight is hidden in the Diagnostics log. Remove clears everything.
 
-**Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), About.
+**Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), and **About**: the version, which pad Stride is for, the developer (a tap opens ricardouzcategui.com in the browser), credits for the work Stride stands on, and the GitHub project. Links open in the browser; Stride itself still has no internet permission.
 
 ## What it will not do
 

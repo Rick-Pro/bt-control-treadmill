@@ -35,6 +35,7 @@ sealed class Screen {
     data object Control : Screen()
     data object History : Screen()
     data class Detail(val workoutId: String) : Screen()
+    data object About : Screen()
 }
 
 /**
@@ -140,6 +141,8 @@ fun AppRoot(app: StrideApp, keepScreenOn: (Boolean) -> Unit) {
                         onBack = { screen = Screen.Control },
                         onOpen = { id -> screen = Screen.Detail(id) },
                     )
+                Screen.About ->
+                    AboutScreen(versionName = app.versionName, onBack = { screen = Screen.Control })
                 is Screen.Detail ->
                     WorkoutDetailScreen(
                         history = app.history,
@@ -157,6 +160,10 @@ fun AppRoot(app: StrideApp, keepScreenOn: (Boolean) -> Unit) {
             app = app,
             state = state,
             onKeepScreenOnChanged = { keepOnSetting = it },
+            onAbout = {
+                settingsOpen = false
+                screen = Screen.About
+            },
             onDismiss = { settingsOpen = false },
         )
     }
