@@ -1,5 +1,6 @@
 package io.github.rickpro.stride.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,9 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.rickpro.stride.R
@@ -121,15 +124,9 @@ fun SettingsSheet(
             Divider()
 
             Text(stringResource(R.string.settings_treadmill), style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = stringResource(
-                    R.string.settings_protocol,
-                    state.transport ?: stringResource(R.string.settings_protocol_none),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = StrideColors.Muted,
-            )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
+            TreadmillInfoCard(state = state)
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.settings_forget_body, state.deviceName ?: "this treadmill"),
                 style = MaterialTheme.typography.bodyMedium,
@@ -277,7 +274,7 @@ private fun ProfileEditor(state: TreadmillManager.State, onSave: (Profile?) -> U
                         text = stringResource(label),
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = TextAlign.Center,
                     )
                 },
                 modifier = Modifier
@@ -338,6 +335,60 @@ private fun ProfileField(value: String, label: String, keyboard: KeyboardType, m
         keyboardOptions = KeyboardOptions(keyboardType = keyboard),
         textStyle = MaterialTheme.typography.titleMedium,
     )
+}
+
+/**
+ * What the treadmill reports about itself, as far as this pad fills it in: protocol, firmware, its id, max speed, and
+ * heart rate and incline only when they are not zero (the HY-BA06B1 sends neither). The pad's own step count sits
+ * next to Stride's estimate. Wi-Fi is left out on purpose: it only talks to the PitPat cloud.
+ */
+@Composable
+private fun TreadmillInfoCard(state: TreadmillManager.State) {
+    val status = state.status
+    val unit = state.unit
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(StrideColors.Background)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        InfoRow(stringResource(R.string.info_protocol), state.transport ?: stringResource(R.string.settings_protocol_none))
+        if (status == null) {
+            Text(
+                text = stringResource(R.string.info_connect),
+                style = MaterialTheme.typography.bodyMedium,
+                color = StrideColors.Muted,
+            )
+            return@Column
+        }
+        if (status.firmware > 0) InfoRow(stringResource(R.string.info_firmware), status.firmware.toString())
+        state.deviceId?.let { InfoRow(stringResource(R.string.info_device_id), it) }
+        status.maxSpeedKmh?.let {
+            InfoRow(stringResource(R.string.info_max_speed), "${Units.speedText(it, unit)} ${Units.speedUnitLabel(unit)}")
+        }
+        if (status.heartRateBpm > 0) InfoRow(stringResource(R.string.info_heart_rate), "${status.heartRateBpm} bpm")
+        if (status.incline > 0) InfoRow(stringResource(R.string.info_incline), status.incline.toString())
+        val ours = state.steps
+        InfoRow(
+            stringResource(R.string.info_steps),
+            if (ours != null && ours.estimated) {
+                stringResource(R.string.info_steps_estimated, status.steps, ours.count)
+            } else {
+                stringResource(R.string.info_steps_counted, status.steps)
+            },
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = StrideColors.Muted, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(12.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = StrideColors.Text, textAlign = TextAlign.End, modifier = Modifier.weight(1.4f))
+    }
 }
 
 @Composable

@@ -239,3 +239,22 @@ class PitPatLink(val variant: PitPatVariant, private val log: (String) -> Unit =
         const val MAX_UNCONFIRMED = 20
     }
 }
+
+/** What must not reach a log that people share. */
+object LogMask {
+    private const val ID_START = 32
+    private const val ID_END = 50
+    private const val ID_FRAME_SIZE = 52
+
+    /**
+     * Hex of a notification for the log, with the pad's id (bytes 32 to 49 of a 52-byte status frame, after the
+     * 4-byte header on a wrapped pad) shown as `**`. Shorter frames carry no id and are shown whole. A status split
+     * over several notifications is not recognised, which does not happen at the 517-byte MTU Stride asks for.
+     */
+    fun notificationHex(data: ByteArray): String {
+        val offset = if (data.size > PitPatWrapper.HEADER_SIZE && data[0] == PitPatWrapper.MAGIC.toByte()) PitPatWrapper.HEADER_SIZE else 0
+        if (data.size - offset < ID_FRAME_SIZE) return data.toHex()
+        return data.toHex().split(' ').mapIndexed { i, token -> if (i in (offset + ID_START) until (offset + ID_END)) "**" else token }
+            .joinToString(" ")
+    }
+}

@@ -32,6 +32,12 @@ object PitPatProtocol : TreadmillProtocol {
     private const val WEIGHT_KG = 80
     private const val USER_ID = 58_965_456_623L
     private const val MIN_STATUS_LENGTH = 31
+    private const val DEVICE_ID_START = 32
+    private const val DEVICE_ID_END = 50
+    private const val MIN_DEVICE_ID_LENGTH = 3
+    private const val LOAD_OFFSET_A = 41
+    private const val LOAD_OFFSET_B = 43
+    private val LOAD_FRAME_SIZES = 45..49
     private const val SETTINGS_TAG = 0xF1
     private const val SETTINGS_MUTE_BIT = 0x10
 
@@ -105,7 +111,32 @@ object PitPatProtocol : TreadmillProtocol {
             kcal = u16(18),
             maxSpeedKmh = u16(27).takeIf { it > 0 }?.let { it / unitsPerKmh.toDouble() },
             firmware = firmware,
+            heartRateBpm = u8(13),
+            incline = u8(11),
+            sessionId = u8(24),
+            deviceId = deviceId(frame),
+            load = load(frame),
         )
+    }
+
+    /** The printable ASCII id in bytes 32 to 49 of the 52-byte frame, up to the first NUL; null if there is none. */
+    private fun deviceId(frame: ByteArray): String? {
+        if (frame.size < DEVICE_ID_END + 2) return null
+        val text = StringBuilder()
+        for (i in DEVICE_ID_START until DEVICE_ID_END) {
+            val b = frame[i].toInt() and 0xFF
+            if (b == 0) break
+            if (b !in 0x20..0x7E) return null // not text: not an id
+            text.append(b.toChar())
+        }
+        return text.toString().takeIf { it.length >= MIN_DEVICE_ID_LENGTH }
+    }
+
+    /** The unknown "load" u16: offset 41 or 43 of the 47-byte frame, whichever is not zero. */
+    private fun load(frame: ByteArray): Int? {
+        if (frame.size !in LOAD_FRAME_SIZES) return null
+        fun u16(i: Int) = ((frame[i].toInt() and 0xFF) shl 8) or (frame[i + 1].toInt() and 0xFF)
+        return u16(LOAD_OFFSET_A).takeIf { it > 0 } ?: u16(LOAD_OFFSET_B).takeIf { it > 0 }
     }
 
     private fun controlFrame(op: Int, speedKmh: Double, mode: Int): ByteArray {

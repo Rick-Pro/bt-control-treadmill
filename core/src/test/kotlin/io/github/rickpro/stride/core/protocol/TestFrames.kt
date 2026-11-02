@@ -12,6 +12,10 @@ object TestFrames {
         durationRaw: Long = 754_000,
         firmware: Int = 27,
         maxSpeed: Int = 6000,
+        heartRate: Int = 0,
+        incline: Int = 0,
+        sessionId: Int = 0,
+        deviceId: String? = null,
     ): ByteArray {
         val frame = ByteArray(52)
         frame[0] = 0x68
@@ -22,6 +26,10 @@ object TestFrames {
         put(frame, 14, steps, 4)
         put(frame, 18, kcal.toLong(), 2)
         put(frame, 20, durationRaw, 4)
+        frame[11] = incline.toByte()
+        frame[13] = heartRate.toByte()
+        frame[24] = sessionId.toByte()
+        deviceId?.forEachIndexed { i, c -> frame[32 + i] = c.code.toByte() }
         frame[25] = firmware.toByte()
         frame[26] = flags.toByte()
         put(frame, 27, maxSpeed.toLong(), 2)
