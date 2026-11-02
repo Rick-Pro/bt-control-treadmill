@@ -1,0 +1,101 @@
+name: Release
+
+# Manual only: Actions, Release, Run workflow (from main), enter the version, for example v0.1.0.
+# 1. scripts/release-preflight.sh checks the tag, VERSION, that the release and tag are new, and that the release
+#    key settings exist, before anything is built. It lists every problem at once.
+# 2. Core and app unit tests, then the release (R8) APK stamped with that version.
+# 3. scripts/release-sign.sh aligns it, signs it with the release key and checks the signature, the certificate
+#    against STRIDE_CERT_SHA256, the package, the version and the 8 MB budget. Then the permission allow-list.
+# 4. Publishes stride-vX.Y.Z.apk and stride-vX.Y.Z.apk.sha256 as the GitHub Release vX.Y.Z.
+# Settings (names only): secrets STRIDE_KEYSTORE_BASE64 and STRIDE_KEYSTORE_PASSWORD, variables STRIDE_KEY_ALIAS
+# and STRIDE_CERT_SHA256. scripts/make-release-key.sh sets all four. Only this workflow reads them.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, for example v0.1.0. It must match the VERSION file.'
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, sign and publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      TAG: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check the tag, VERSION and the release key settings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STRIDE_KEYSTORE_BASE64: ${{ secrets.STRIDE_KEYSTORE_BASE64 }}
+          STRIDE_KEYSTORE_PASSWORD: ${{ secrets.STRIDE_KEYSTORE_PASSWORD }}
+          STRIDE_KEY_ALIAS: ${{ vars.STRIDE_KEY_ALIAS }}
+          STRIDE_CERT_SHA256: ${{ vars.STRIDE_CERT_SHA256 }}
+        run: scripts/release-preflight.sh "$TAG"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Tests and the release APK
+        run: scripts/ci-gradle.sh "-Pstride.versionName=${TAG#v}" :core:test :app:testDebugUnitTest :app:assembleRelease
+
+      - name: Align, sign and check the APK
+        env:
+          STRIDE_KEYSTORE_BASE64: ${{ secrets.STRIDE_KEYSTORE_BASE64 }}
+          STRIDE_KEYSTORE_PASSWORD: ${{ secrets.STRIDE_KEYSTORE_PASSWORD }}
+          STRIDE_KEY_ALIAS: ${{ vars.STRIDE_KEY_ALIAS }}
+          STRIDE_CERT_SHA256: ${{ vars.STRIDE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export STRIDE_KEYSTORE="$RUNNER_TEMP/stride-release.p12" STRIDE_VERSION="${TAG#v}"
+          printf '%s' "$STRIDE_KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 -d > "$STRIDE_KEYSTORE" \
+            || { echo "::error title=Bad STRIDE_KEYSTORE_BASE64::It is not valid base64. Run scripts/make-release-key.sh again: it reuses the key and sets it."; exit 1; }
+          shopt -s nullglob
+          built=(app/build/outputs/apk/release/*.apk)
+          [ "${#built[@]}" -eq 1 ] || { echo "::error::Expected one release APK, found ${#built[@]}."; exit 1; }
+          scripts/release-sign.sh "${built[0]}" "dist/stride-${TAG}.apk"
+          rm -f "$STRIDE_KEYSTORE"
+
+      - name: Permission allow-list (config/allowed-permissions.txt)
+        run: scripts/ci-check-permissions.sh "dist/stride-${TAG}.apk"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CERT: ${{ vars.STRIDE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          apk="stride-${TAG}.apk"
+          sha="$(cut -d' ' -f1 "dist/${apk}.sha256")"
+          cert="$(tr -d ': ' <<< "$CERT" | tr 'A-F' 'a-f')"
+          notes="Stride ${TAG}, for Android 13 or newer.
+
+          - What changed: the ${TAG} row of What's new in the README, https://github.com/${GH_REPO}#whats-new
+          - How to install or update: https://github.com/${GH_REPO}#install
+          - SHA-256 of ${apk}: ${sha} (${apk}.sha256 holds the same, for sha256sum -c)
+          - Certificate SHA-256: ${cert}. Every release carries this same certificate, which is why an update installs over the old copy."
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "Stride ${TAG}" --notes "$notes" \
+            "dist/${apk}" "dist/${apk}.sha256"
+          echo "Published ${TAG}: https://github.com/${GH_REPO}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete the decoded release key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/stride-release.p12"

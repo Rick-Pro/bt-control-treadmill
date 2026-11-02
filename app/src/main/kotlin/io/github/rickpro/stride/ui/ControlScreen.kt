@@ -1,0 +1,441 @@
+package io.github.rickpro.stride.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import io.github.rickpro.stride.R
+import io.github.rickpro.stride.core.protocol.RunState
+import io.github.rickpro.stride.core.units.MeasureUnit
+import io.github.rickpro.stride.core.units.Units
+import io.github.rickpro.stride.session.TreadmillManager
+import io.github.rickpro.stride.ui.components.Banner
+import io.github.rickpro.stride.ui.components.StatTile
+import io.github.rickpro.stride.ui.components.StrideIconButton
+import io.github.rickpro.stride.ui.components.openBluetoothSettings
+import io.github.rickpro.stride.ui.theme.StrideColors
+import kotlin.math.abs
+
+/** One step of the treadmill's own speed granularity, in km/h. */
+private const val STEP_KMH = 0.1
+
+/**
+ * The home screen: status line, the big speed number, four stats, then the control cluster in the lower
+ * half where the thumb lives: SPD -, Start/Pause, SPD +, a wide STOP, four preset chips, and a small row
+ * with the units toggle, History and Settings.
+ */
+@Composable
+fun ControlScreen(
+    state: TreadmillManager.State,
+    manager: TreadmillManager,
+    permissionGranted: Boolean,
+    onRequestPermission: () -> Unit,
+    onHistory: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    val context = LocalContext.current
+    val status = state.status
+    val connected = state.link == TreadmillManager.Link.CONNECTED
+    val ready = connected && state.fresh && status != null
+    val unit = state.unit
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+    ) {
+        StatusLine(state = state)
+
+        if (!permissionGranted) {
+            Banner(
+                text = stringResource(R.string.banner_permission),
+                actionLabel = stringResource(R.string.btn_allow),
+                onAction = onRequestPermission,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        } else if (!state.bluetoothOn) {
+            Banner(
+                text = stringResource(R.string.link_bluetooth_off),
+                actionLabel = stringResource(R.string.btn_open_bluetooth),
+                onAction = { openBluetoothSettings(context) },
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        } else if (state.alert == TreadmillManager.Alert.LINK_LOST || state.link == TreadmillManager.Link.DISCONNECTED) {
+            Banner(
+                text = stringResource(R.string.banner_link_lost),
+                actionLabel = stringResource(R.string.btn_reconnect),
+                onAction = {
+                    manager.dismissAlert()
+                    manager.reconnect()
+                },
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        SpeedReadout(state = state)
+
+        Spacer(Modifier.height(20.dp))
+
+        StatsRow(state = state)
+
+        Spacer(Modifier.weight(1.2f))
+
+        ControlCluster(state = state, ready = ready, manager = manager)
+
+        Spacer(Modifier.height(14.dp))
+
+        PresetRow(state = state, enabled = connected, manager = manager)
+
+        Spacer(Modifier.height(10.dp))
+
+        BottomRow(unit = unit, manager = manager, onHistory = onHistory, onSettings = onSettings)
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** A small dot plus the treadmill's name and link state, with the gear on the right. */
+@Composable
+private fun StatusLine(state: TreadmillManager.State) {
+    val (label, color) = when {
+        !state.bluetoothOn -> stringResource(R.string.link_bluetooth_off) to StrideColors.Warning
+        state.link == TreadmillManager.Link.CONNECTED && state.fresh -> stringResource(R.string.link_connected) to StrideColors.Accent
+        state.link == TreadmillManager.Link.CONNECTED -> stringResource(R.string.hint_no_data) to StrideColors.Warning
+        state.link == TreadmillManager.Link.CONNECTING -> stringResource(R.string.link_connecting) to StrideColors.Warning
+        state.link == TreadmillManager.Link.RECONNECTING -> stringResource(R.string.link_reconnecting) to StrideColors.Warning
+        else -> stringResource(R.string.link_disconnected) to StrideColors.Muted
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = state.deviceName ?: stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleMedium,
+                color = StrideColors.Text,
+                maxLines = 1,
+            )
+            val attempt = if (state.link == TreadmillManager.Link.RECONNECTING && state.attempt > 0) " (${state.attempt})" else ""
+            Text(
+                text = label + attempt,
+                style = MaterialTheme.typography.bodyMedium,
+                color = color,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** The big number: current belt speed, with the belt state and the target speed under it. */
+@Composable
+private fun SpeedReadout(state: TreadmillManager.State) {
+    val status = state.status
+    val unit = state.unit
+    val speedKmh = status?.speedKmh ?: 0.0
+    val beltLabel = when (status?.state) {
+        RunState.RUNNING -> stringResource(R.string.belt_running)
+        RunState.STARTING -> stringResource(R.string.belt_starting)
+        RunState.PAUSED -> stringResource(R.string.belt_paused)
+        RunState.STOPPED -> stringResource(R.string.belt_stopped)
+        null -> ""
+    }
+    val beltColor = when (status?.state) {
+        RunState.RUNNING -> StrideColors.Accent
+        RunState.STARTING -> StrideColors.Warning
+        else -> StrideColors.Muted
+    }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = beltLabel.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = beltColor,
+        )
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = Units.speedText(speedKmh, unit),
+                style = MaterialTheme.typography.displayLarge,
+                color = if (status == null) StrideColors.Muted else StrideColors.Text,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = Units.speedUnitLabel(unit),
+                style = MaterialTheme.typography.headlineSmall,
+                color = StrideColors.Muted,
+                modifier = Modifier.padding(bottom = 18.dp),
+            )
+        }
+        // The target is worth showing while it differs from the belt: during a change, or before a start.
+        val showTarget = status == null || status.state != RunState.RUNNING || abs(status.targetSpeedKmh - speedKmh) > 0.05
+        Text(
+            text = if (showTarget) {
+                stringResource(R.string.target_speed, Units.speedText(state.targetKmh, unit), Units.speedUnitLabel(unit))
+            } else {
+                " "
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = StrideColors.Muted,
+        )
+    }
+}
+
+@Composable
+private fun StatsRow(state: TreadmillManager.State) {
+    val status = state.status
+    val unit = state.unit
+    val steps = state.steps
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        StatTile(
+            label = stringResource(R.string.stat_time),
+            value = Units.durationText(status?.durationSeconds ?: 0L),
+            unit = null,
+            modifier = Modifier.weight(1.15f),
+        )
+        StatTile(
+            label = stringResource(R.string.stat_distance),
+            value = Units.distanceText(status?.distanceKm ?: 0.0, unit),
+            unit = Units.distanceUnitLabel(unit),
+            modifier = Modifier.weight(1f),
+        )
+        StatTile(
+            label = stringResource(R.string.stat_calories),
+            value = (status?.kcal ?: 0).toString(),
+            unit = "kcal",
+            modifier = Modifier.weight(1f),
+        )
+        StatTile(
+            label = if (steps?.estimated == true) stringResource(R.string.stat_steps_estimated) else stringResource(R.string.stat_steps),
+            value = (steps?.count ?: 0L).toString(),
+            unit = null,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** SPD -, Start/Pause, SPD + in one row, then the wide STOP. */
+@Composable
+private fun ControlCluster(state: TreadmillManager.State, ready: Boolean, manager: TreadmillManager) {
+    val status = state.status
+    val running = status?.state == RunState.RUNNING
+    val starting = status?.state == RunState.STARTING
+    val connected = state.link == TreadmillManager.Link.CONNECTED
+    val range = state.speedRange
+    val atMin = state.targetKmh <= range.start + 0.001
+    val atMax = state.targetKmh >= range.endInclusive - 0.001
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RoundTonalButton(
+            label = stringResource(R.string.btn_speed_down),
+            enabled = connected && !atMin,
+            onClick = { manager.changeSpeed(-STEP_KMH) },
+        )
+        StartPauseButton(
+            running = running,
+            starting = starting,
+            paused = status?.state == RunState.PAUSED,
+            enabled = ready && !starting,
+            onClick = manager::startOrPause,
+        )
+        RoundTonalButton(
+            label = stringResource(R.string.btn_speed_up),
+            enabled = connected && !atMax,
+            onClick = { manager.changeSpeed(STEP_KMH) },
+        )
+    }
+    Spacer(Modifier.height(14.dp))
+    Button(
+        onClick = manager::stop,
+        enabled = connected,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = StrideColors.Stop,
+            contentColor = StrideColors.Text,
+            disabledContainerColor = StrideColors.StopDim,
+            disabledContentColor = StrideColors.Muted,
+        ),
+    ) {
+        Text(stringResource(R.string.btn_stop), style = MaterialTheme.typography.headlineSmall)
+    }
+}
+
+@Composable
+private fun RoundTonalButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(84.dp),
+        shape = CircleShape,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = StrideColors.SurfaceHigh,
+            contentColor = StrideColors.Text,
+            disabledContainerColor = StrideColors.Surface,
+            disabledContentColor = StrideColors.Muted,
+        ),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun StartPauseButton(running: Boolean, starting: Boolean, paused: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val label = when {
+        running -> stringResource(R.string.btn_pause)
+        starting -> stringResource(R.string.belt_starting)
+        paused -> stringResource(R.string.btn_resume)
+        else -> stringResource(R.string.btn_start)
+    }
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(104.dp),
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (running) StrideColors.SurfaceHigh else StrideColors.Accent,
+            contentColor = if (running) StrideColors.Text else StrideColors.OnAccent,
+            disabledContainerColor = StrideColors.Surface,
+            disabledContentColor = StrideColors.Muted,
+        ),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                painter = painterResource(if (running) R.drawable.ic_pause else R.drawable.ic_play),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp),
+            )
+            Text(label, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+/** Four quick speeds. The selected chip is the one matching the current target. */
+@Composable
+private fun PresetRow(state: TreadmillManager.State, enabled: Boolean, manager: TreadmillManager) {
+    val unit = state.unit
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        state.presetsKmh.take(4).forEach { kmh ->
+            val selected = abs(kmh - state.targetKmh) < 0.05
+            FilterChip(
+                selected = selected,
+                enabled = enabled,
+                onClick = { manager.selectSpeed(kmh) },
+                label = {
+                    Text(
+                        text = Units.speedText(kmh, unit),
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = StrideColors.Surface,
+                    labelColor = StrideColors.Text,
+                    selectedContainerColor = StrideColors.AccentDim,
+                    selectedLabelColor = StrideColors.Text,
+                    disabledContainerColor = StrideColors.Surface,
+                    disabledLabelColor = StrideColors.Muted,
+                ),
+                border = null,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BottomRow(unit: MeasureUnit, manager: TreadmillManager, onHistory: () -> Unit, onSettings: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        UnitToggle(unit = unit, onChange = manager::setUnit)
+        Spacer(Modifier.weight(1f))
+        StrideIconButton(iconRes = R.drawable.ic_history, contentDescription = stringResource(R.string.btn_history), onClick = onHistory)
+        StrideIconButton(iconRes = R.drawable.ic_gear, contentDescription = stringResource(R.string.btn_settings), onClick = onSettings)
+    }
+}
+
+/** mph | km as two small segments. */
+@Composable
+fun UnitToggle(unit: MeasureUnit, onChange: (MeasureUnit) -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(StrideColors.Surface),
+    ) {
+        UnitSegment(stringResource(R.string.unit_mph), unit == MeasureUnit.IMPERIAL) { onChange(MeasureUnit.IMPERIAL) }
+        UnitSegment(stringResource(R.string.unit_km), unit == MeasureUnit.METRIC) { onChange(MeasureUnit.METRIC) }
+    }
+}
+
+@Composable
+private fun UnitSegment(label: String, selected: Boolean, onClick: () -> Unit) {
+    androidx.compose.material3.TextButton(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        colors = ButtonDefaults.textButtonColors(
+            containerColor = if (selected) StrideColors.AccentDim else Color.Transparent,
+            contentColor = if (selected) StrideColors.Text else StrideColors.Muted,
+        ),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+    }
+}

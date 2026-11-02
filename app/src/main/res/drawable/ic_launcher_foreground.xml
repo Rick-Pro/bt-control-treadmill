@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A walking pad seen from the side, with three stride marks rising off the belt. Green on the dark background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- belt: a rounded slab -->
+    <path
+        android:fillColor="#3FB950"
+        android:pathData="M24,66 L84,66 A6,6 0 0 1 84,78 L24,78 A6,6 0 0 1 24,66 Z" />
+    <!-- belt rollers -->
+    <path
+        android:fillColor="#0F1419"
+        android:pathData="M30,72 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0" />
+    <path
+        android:fillColor="#0F1419"
+        android:pathData="M78,72 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0" />
+    <!-- three stride marks, each a little higher and longer -->
+    <path
+        android:fillColor="#3FB950"
+        android:pathData="M36,56 L50,56 A3,3 0 0 1 50,62 L36,62 A3,3 0 0 1 36,56 Z" />
+    <path
+        android:fillColor="#3FB950"
+        android:pathData="M46,44 L66,44 A3,3 0 0 1 66,50 L46,50 A3,3 0 0 1 46,44 Z" />
+    <path
+        android:fillColor="#3FB950"
+        android:pathData="M56,32 L80,32 A3,3 0 0 1 80,38 L56,38 A3,3 0 0 1 56,32 Z" />
+</vector>
