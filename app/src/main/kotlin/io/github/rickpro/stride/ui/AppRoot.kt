@@ -48,6 +48,8 @@ fun AppRoot(app: StrideApp, keepScreenOn: (Boolean) -> Unit) {
     val state by manager.state.collectAsStateWithLifecycle()
     var screen by remember { mutableStateOf<Screen>(Screen.Control) }
     var settingsOpen by remember { mutableStateOf(false) }
+    // "Find a treadmill" from the Control screen: the link is closed and Setup scans again.
+    var finding by remember { mutableStateOf(false) }
     var permissionGranted by remember { mutableStateOf(BlePermissions.granted(context)) }
     var keepOnSetting by remember { mutableStateOf(app.settings.keepScreenOn) }
     val snackbar = remember { SnackbarHostState() }
@@ -82,10 +84,20 @@ fun AppRoot(app: StrideApp, keepScreenOn: (Boolean) -> Unit) {
         }
     }
 
-    BackHandler(enabled = screen != Screen.Control) {
-        screen = when (screen) {
-            is Screen.Detail -> Screen.History
-            else -> Screen.Control
+    // Leaving Find without picking anything: take the remembered treadmill back.
+    val cancelFind = {
+        finding = false
+        manager.reconnect()
+    }
+
+    BackHandler(enabled = screen != Screen.Control || finding) {
+        if (finding) {
+            cancelFind()
+        } else {
+            screen = when (screen) {
+                is Screen.Detail -> Screen.History
+                else -> Screen.Control
+            }
         }
     }
 
@@ -100,12 +112,15 @@ fun AppRoot(app: StrideApp, keepScreenOn: (Boolean) -> Unit) {
         ) {
             when (val current = screen) {
                 Screen.Control ->
-                    if (state.link == TreadmillManager.Link.NO_DEVICE) {
+                    if (state.link == TreadmillManager.Link.NO_DEVICE || finding) {
                         SetupScreen(
                             manager = manager,
                             bluetoothOn = state.bluetoothOn,
                             permissionGranted = permissionGranted,
                             onRequestPermission = requestPermission,
+                            autoScan = finding,
+                            onPicked = { finding = false },
+                            onCancel = if (finding && state.link != TreadmillManager.Link.NO_DEVICE) cancelFind else null,
                         )
                     } else {
                         ControlScreen(
@@ -115,6 +130,7 @@ fun AppRoot(app: StrideApp, keepScreenOn: (Boolean) -> Unit) {
                             onRequestPermission = requestPermission,
                             onHistory = { screen = Screen.History },
                             onSettings = { settingsOpen = true },
+                            onFind = { finding = true },
                         )
                     }
                 Screen.History ->

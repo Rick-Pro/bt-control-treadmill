@@ -43,7 +43,7 @@ class PitPatProtocolTest {
         assertEquals(
             TreadmillStatus(
                 state = RunState.RUNNING, speedKmh = 3.5, targetSpeedKmh = 3.5, distanceKm = 1.234,
-                durationSeconds = 754, steps = 1520, kcal = 56, maxSpeedKmh = 6.0,
+                durationSeconds = 754, steps = 1520, kcal = 56, maxSpeedKmh = 6.0, firmware = 27,
             ),
             status,
         )

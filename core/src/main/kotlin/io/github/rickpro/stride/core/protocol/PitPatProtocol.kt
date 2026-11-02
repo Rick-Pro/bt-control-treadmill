@@ -104,6 +104,7 @@ object PitPatProtocol : TreadmillProtocol {
             steps = u32(14),
             kcal = u16(18),
             maxSpeedKmh = u16(27).takeIf { it > 0 }?.let { it / unitsPerKmh.toDouble() },
+            firmware = firmware,
         )
     }
 

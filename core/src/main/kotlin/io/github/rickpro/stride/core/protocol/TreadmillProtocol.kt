@@ -63,6 +63,8 @@ data class TreadmillStatus(
     val kcal: Int,
     /** Maximum speed reported by the treadmill, or null if it does not report one. */
     val maxSpeedKmh: Double?,
+    /** Firmware version byte of the status frame (27 on Ricardo's pad); 0 when unknown. */
+    val firmware: Int = 0,
 ) {
     val isMoving: Boolean get() = state == RunState.RUNNING || state == RunState.STARTING
 }

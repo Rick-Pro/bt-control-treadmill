@@ -33,7 +33,7 @@ one was picked ("Transport: ..."), and Settings and the shared Diagnostics text 
 | # | Name shown | Where | Header on every write and notification | Keep-alive |
 |---|---|---|---|---|
 | 1 | PitPat | service `FBA0`: write `FBA1`, notify `FBA2` | none | `6A 05 FD F8 43` every 1000 ms |
-| 2 | PitPat wrapped | `FF01` and `FF02` in whichever service holds both (qdomyos-zwift reports `FFFF`) | `4D 00 <counter> <len>` | heartbeat after each notification, no timer |
+| 2 | PitPat wrapped | `FF01` and `FF02` in whichever service holds both (`FFFF` on Ricardo's HY-BA06B1, confirmed from a log) | `4D <dir> <counter> <len>` | heartbeat after each notification, no timer |
 | 3 | PitPat FFF | `FFF1` and `FFF2` in whichever service holds both (`FFF0` on pads seen) | none | like 1 |
 
 For 2 and 3 the characteristic that can be written is the command one and the one that can notify is the status one,
@@ -43,18 +43,39 @@ command characteristic only supports write without response are written without 
 written with response, as before.
 
 ### Wrapper (variant 2)
-`4D 00 <counter> <len>` then the normal frame, in both directions.
-- `counter` is one byte, starts at 0 on every connection, goes up by one on **every write** (heartbeats included)
-  and wraps after 255.
-- `len` is the size of the frame that follows (`17` for a control frame, `05` for the heartbeat).
-- A notification is stripped of its 4 header bytes, then goes through the same `FrameReassembler` and
-  `parseStatus` as variant 1, so the status layout is identical (offsets below, counted from the frame, not the
-  header). A chunk that continues a frame split over several notifications is never taken for a header.
+`4D <dir> <counter> <len>` then the normal frame, in both directions.
+- `dir` is `00` on what Stride writes and **`04` on what the pad notifies** (seen on a HY-BA06B1). Stride sends `00` and
+  accepts any value when reading, because an earlier version that insisted on `00` dropped every real status.
+- `counter` is one byte. Stride's own starts at 0 on every connection, goes up by one on **every write** (heartbeats
+  included) and wraps after 255. The pad numbers its notifications separately (`01`, `02` in the captures below); the
+  two counters are never compared or copied.
+- `len` is the size of the frame that follows (`17` for a control frame, `05` for the heartbeat, `34` or `2F` for the
+  two status frames captured).
+- A notification is cut to bytes 4 up to 4 + `len`, then goes through the same `FrameReassembler` and `parseStatus` as
+  variant 1, so the status layout is identical (offsets below, counted from the frame, not the header). Any inner
+  length of 31 or more is fine as long as the length byte, the XOR and the trailer `43` check out: it is not fixed at
+  52. A chunk that continues a frame split over several notifications is never taken for a header.
 
 ```
 start 1.0 km/h, counter 2 : 4D 00 02 17 6A 17 00 00 00 00 03 E8 01 00 50 00 04 00 00 00 0D BA 9D 76 EF 1A 43
 heartbeat, counter 0      : 4D 00 00 05 6A 05 FD F8 43
 ```
+
+Captured from Ricardo's pad (PitPat-T01 / HY-BA06B1, idle, belt stopped, imperial panel). Both are in
+`PadCapturesTest` and decode to: STOPPED, speed 0, target 0, distance 0.009 km (9 m), steps 0, kcal 0, duration 0,
+firmware 27, max speed 6.0 km/h.
+```
+56 bytes, inner frame 52 (0x34), with an 18-byte ASCII device id at inner offsets 32 to 49:
+4D 04 01 34 68 34 00 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 CB 1B 82 17 70 00 05 00
+74 4F 68 33 31 36 67 4C 6F 35 42 4B 75 31 33 34 41 00 10 43
+
+51 bytes, inner frame 47 (0x2F), no device id:
+4D 04 02 2F 68 2F 00 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 CB 1B 82 17 70 00 05 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 16 43
+```
+Reading them: header `4D 04 <01|02> <34|2F>`; inner byte 0 `68`, byte 1 the length, speed and target `00 00`, distance
+`00 00 00 09`, firmware `1B` (27) at offset 25, flags `82` at 26 (bit `80` imperial panel, run-state bits `18` clear =
+stopped), max speed `17 70` = 6000 at 27 to 28, XOR `10` or `16`, trailer `43`.
 
 ### Heartbeat (variant 2)
 The pad is answered with one heartbeat per received notification (valid status or not), instead of a timer. It is
@@ -130,8 +151,10 @@ beeper on  : 6A 17 F1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 E
 beeper off : 6A 17 F1 00 00 00 00 00 00 00 00 00 10 00 00 00 00 00 00 00 00 01 F7 43
 ```
 
-## Status frame (52 bytes, notified on FBA2)
-Offsets are 0-based, values big-endian. The length byte is `34` (52) and the last byte `43`.
+## Status frame (52 bytes, or 47 on the wrapped pad; notified on FBA2 / FF02)
+Offsets are 0-based, values big-endian. The length byte is `34` (52) or `2F` (47) and the last byte `43`. The 47-byte
+form is the 52-byte one without the device id at 32 to 49. Anything of 31 bytes or more with a matching length byte,
+XOR and trailer is accepted.
 | Offset | Meaning |
 |---|---|
 | 0 | start byte (`68` in captures; not checked) |
@@ -145,7 +168,7 @@ Offsets are 0-based, values big-endian. The length byte is `34` (52) and the las
 | 14 to 17 | steps, u32. Some BA06-B1 firmware always sends 0, so Stride estimates steps from distance until a real count appears |
 | 18 to 19 | kcal, u16 |
 | 20 to 23 | duration, u32. Milliseconds when the firmware byte is above 19, otherwise seconds |
-| 25 | firmware version |
+| 25 | firmware version (`1B` = 27 on Ricardo's pad). Shown as `fw=` in the Diagnostics log |
 | 26 | flags: `01` Wi-Fi connected; bits `18` = run state (`18` starting countdown, `08` running, `10` paused, `00` stopped); `80` panel shows imperial |
 | 27 to 28 | max speed, u16, thousandths of km/h |
 | 29 | max incline (0 = none) |
@@ -167,7 +190,7 @@ Offsets are 0-based, values big-endian. The length byte is `34` (52) and the las
 - https://github.com/Razzolate99/pitpat-treadmill (no license): Python frame builder and parser, beeper frames. Facts only.
 - https://github.com/sirfergy/HomeAssistantWalkingPad (GPL-3.0): lists the BA06-B1 as supported; single-client note. Facts only.
 - https://github.com/azmke/pitpat-treadmill-control (MIT): `src/bluetooth_manager.py`, `treadmill_controller.py`,
-  `treadmill_data.py`. Source of the FF01/FF02 pair, the `4D 00 <counter> <len>` wrapper, the heartbeat body, the
+  `treadmill_data.py`. Source of the FF01/FF02 pair, the `4D <direction> <counter> <len>` wrapper, the heartbeat body, the
   strip-4-bytes status layout and thousandths of km/h. Re-implemented in Kotlin, no code copied; notice in
   THIRD_PARTY_NOTICES.md.
 - qdomyos-zwift (GPL-3.0): reports the service as `FFFF` and speeds in hundredths for some pads. Facts only, passed
