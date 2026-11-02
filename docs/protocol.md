@@ -2,8 +2,11 @@
 
 Compiled from open source work listed at the end. The frames below are what Stride sends and parses
 (`core/.../protocol/PitPatProtocol.kt`). Ricardo's pad is a PitPat HY-BA06B1 that advertises as "BA06-73F6".
-The protocol was verified by others on PitPat-T01 family pads with the same service; the first device test
-(docs/plan.md section 8) confirms it on this unit.
+The `FBA0` layout was verified by others on PitPat-T01 family pads; the first device test
+(docs/plan.md section 8) confirms it on this unit. A pad that advertised as "PitPat-T01" connected but had no
+`FBA0` service. That is why Stride now reads the whole GATT table and also knows the two other layouts below.
+The Diagnostics log always lists every service and characteristic, so the next pad that does not fit can be read
+from a shared log.
 
 ## Discovery
 - Advertised services: `0xFBA0` (and `0x1910` on some units).
@@ -21,6 +24,63 @@ The protocol was verified by others on PitPat-T01 family pads with the same serv
 Enable notifications by writing `01 00` to the CCCD (`0x2902`) of `FBA2`. Request a 517-byte MTU after
 connecting so a whole status frame fits one notification; the `FrameReassembler` copes when it does not.
 Request high connection priority: the pad drops idle links on the default interval.
+
+## Transport variants
+After service discovery Stride writes the whole GATT table to the Diagnostics log (one line per service and
+characteristic, with the property bits) and picks the first layout the pad offers, in this order. The log says which
+one was picked ("Transport: ..."), and Settings and the shared Diagnostics text show its name.
+
+| # | Name shown | Where | Header on every write and notification | Keep-alive |
+|---|---|---|---|---|
+| 1 | PitPat | service `FBA0`: write `FBA1`, notify `FBA2` | none | `6A 05 FD F8 43` every 1000 ms |
+| 2 | PitPat wrapped | `FF01` and `FF02` in whichever service holds both (qdomyos-zwift reports `FFFF`) | `4D 00 <counter> <len>` | heartbeat after each notification, no timer |
+| 3 | PitPat FFF | `FFF1` and `FFF2` in whichever service holds both (`FFF0` on pads seen) | none | like 1 |
+
+For 2 and 3 the characteristic that can be written is the command one and the one that can notify is the status one,
+so a pad that has the pair the other way round still works. A pair whose properties fit neither way is skipped and
+detection goes on to the next layout. The frames inside are the same in all three (sections below). Pads whose
+command characteristic only supports write without response are written without response; everything else is
+written with response, as before.
+
+### Wrapper (variant 2)
+`4D 00 <counter> <len>` then the normal frame, in both directions.
+- `counter` is one byte, starts at 0 on every connection, goes up by one on **every write** (heartbeats included)
+  and wraps after 255.
+- `len` is the size of the frame that follows (`17` for a control frame, `05` for the heartbeat).
+- A notification is stripped of its 4 header bytes, then goes through the same `FrameReassembler` and
+  `parseStatus` as variant 1, so the status layout is identical (offsets below, counted from the frame, not the
+  header). A chunk that continues a frame split over several notifications is never taken for a header.
+
+```
+start 1.0 km/h, counter 2 : 4D 00 02 17 6A 17 00 00 00 00 03 E8 01 00 50 00 04 00 00 00 0D BA 9D 76 EF 1A 43
+heartbeat, counter 0      : 4D 00 00 05 6A 05 FD F8 43
+```
+
+### Heartbeat (variant 2)
+The pad is answered with one heartbeat per received notification (valid status or not), instead of a timer. It is
+skipped when a command is queued or being written, and when the keep-alive setting is off.
+
+Difference from azmke's client: it holds a command until the next notification and sends it *in place of* that
+heartbeat. Stride writes commands at once and only holds back the heartbeat, so STOP is never delayed by up to one
+notification interval. If a pad turns out to need strict one-write-per-notification, this is the place to look.
+
+### Speed scale (variants 2 and 3)
+Speeds are raw units of 0.001 km/h in every frame above (`03 E8` = 1.0 km/h), which is also what azmke's client uses.
+qdomyos-zwift is reported to use 0.01 km/h for some pads. Stride starts with thousandths and switches to hundredths,
+logging `speed scale: hundredths (reason)`, when:
+1. the pad's reported maximum speed, read as thousandths, is below 1.0 km/h (the lowest speed Stride sends). A 6.0 km/h
+   pad in hundredths reads 0.6. This is checked on every status, so it normally switches before the first command; or
+2. after a start or speed command, the target speed the pad echoes is about a tenth (0.07 to 0.14) of what was sent.
+   A thousandths pad cannot trigger this: it only runs 1.0 to 6.0 km/h, so the echo is never below a sixth.
+
+After the switch, speed fields in statuses are read with 100 units per km/h, and the speed field of start and speed
+frames is divided by ten (checksum recomputed). An echo within 10% of the command logs `speed scale: thousandths`;
+twenty statuses without a match log "not confirmed" and the scale stays. The 1.0 to 6.0 km/h clamp is applied before
+a frame reaches this step and holds in both scales. Variant 1 never has its scale questioned.
+
+Limit: if a pad reads our thousandths as hundredths and echoes the same raw value back, nothing looks wrong and the
+belt would run ten times too fast (or the pad clamps to its own maximum). Rule 1 closes this when the pad reports a
+maximum. The first device test of variants 2 or 3 should be done with the belt clear and the physical remote in hand.
 
 ## Framing
 `[6A] [LEN] [payload...] [XOR] [43]`
@@ -99,11 +159,17 @@ Offsets are 0-based, values big-endian. The length byte is `34` (52) and the las
 - One client at a time. Close the PitPat app.
 - Split notifications: with the default 23-byte MTU a 52-byte status arrives in pieces. The reassembler uses the
   length byte and drops data older than 300 ms.
-- No handshake or unlock is needed on the FBA0 transport. Other PitPat units use `FF01`/`FF02` or `FFF1`/`FFF2`
-  with a different header; those are not supported.
+- No handshake or unlock is needed on the FBA0 transport. Other PitPat units use `FF01`/`FF02` (with the wrapper)
+  or `FFF1`/`FFF2`; Stride now tries both, see Transport variants. They have not been tried on a real pad yet.
 
 ## Sources
 - https://github.com/Franrodr10/pitpat-controller (MIT): Kotlin implementation, `docs/PROTOCOL.md`, tests. Ported.
 - https://github.com/Razzolate99/pitpat-treadmill (no license): Python frame builder and parser, beeper frames. Facts only.
 - https://github.com/sirfergy/HomeAssistantWalkingPad (GPL-3.0): lists the BA06-B1 as supported; single-client note. Facts only.
-- https://github.com/azmke/pitpat-treadmill-control (MIT): status start byte capture. Facts only.
+- https://github.com/azmke/pitpat-treadmill-control (MIT): `src/bluetooth_manager.py`, `treadmill_controller.py`,
+  `treadmill_data.py`. Source of the FF01/FF02 pair, the `4D 00 <counter> <len>` wrapper, the heartbeat body, the
+  strip-4-bytes status layout and thousandths of km/h. Re-implemented in Kotlin, no code copied; notice in
+  THIRD_PARTY_NOTICES.md.
+- qdomyos-zwift (GPL-3.0): reports the service as `FFFF` and speeds in hundredths for some pads. Facts only, passed
+  on second hand; its code was not read or copied.
+- pacekeeper (GPL): facts only, same as above.

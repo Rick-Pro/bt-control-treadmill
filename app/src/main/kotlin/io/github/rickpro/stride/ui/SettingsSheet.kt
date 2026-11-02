@@ -114,6 +114,15 @@ fun SettingsSheet(
 
             Text(stringResource(R.string.settings_treadmill), style = MaterialTheme.typography.titleMedium)
             Text(
+                text = stringResource(
+                    R.string.settings_protocol,
+                    state.transport ?: stringResource(R.string.settings_protocol_none),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = StrideColors.Muted,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
                 text = stringResource(R.string.settings_forget_body, state.deviceName ?: "this treadmill"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = StrideColors.Muted,

@@ -10,15 +10,20 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
 import android.content.Context
 import android.os.Handler
-import io.github.rickpro.stride.core.protocol.TreadmillProtocol
+import io.github.rickpro.stride.core.protocol.DetectedTransport
+import io.github.rickpro.stride.core.protocol.GattCharacteristicInfo
+import io.github.rickpro.stride.core.protocol.GattServiceInfo
+import io.github.rickpro.stride.core.protocol.GattTable
+import io.github.rickpro.stride.core.protocol.PitPatTransports
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
 /**
- * One GATT session with the treadmill: connect, raise the MTU, discover services and subscribe to the status
- * characteristics; then write command frames one at a time.
+ * One GATT session with the treadmill: connect, raise the MTU, discover services, log every service and
+ * characteristic, pick the PitPat transport the pad offers and subscribe to its status characteristic; then write
+ * command frames one at a time.
  *
  * Android allows a single GATT operation in flight, so every request waits for its callback (or a timeout)
  * before the next one starts. Bluetooth callbacks arrive on [handler]'s thread and every method must be called
@@ -30,9 +35,10 @@ import java.util.UUID
 class GattConnection(
     private val context: Context,
     private val device: BluetoothDevice,
-    private val protocol: TreadmillProtocol,
     private val handler: Handler,
     private val listener: Listener,
+    /** Receives the GATT table and the transport that was picked (the app's diagnostics log). */
+    private val log: (String) -> Unit,
 ) {
     interface Listener {
         fun onData(characteristic: UUID, value: ByteArray)
@@ -50,8 +56,13 @@ class GattConnection(
     var mtu = DEFAULT_MTU
         private set
 
+    /** The transport picked after discovery; set once [open] has succeeded. */
+    var transport: DetectedTransport? = null
+        private set
+
     private var gatt: BluetoothGatt? = null
     private var commandCharacteristic: BluetoothGattCharacteristic? = null
+    private var writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
     private var linkUp: CompletableDeferred<Unit>? = null
     private val mtuOp = Operation()
     private val discoveryOp = Operation()
@@ -80,15 +91,33 @@ class GattConnection(
 
         val discovery = discoveryOp.run(DISCOVERY_TIMEOUT_MS) { g.discoverServices() }
         if (discovery != BluetoothGatt.GATT_SUCCESS) throw GattException("could not read the services (${describe(discovery)})")
-        val service = g.getService(protocol.service)
-            ?: throw IncompatibleDeviceException("the device has no service ${protocol.service}")
-        commandCharacteristic = service.getCharacteristic(protocol.commandCharacteristic)
-            ?: throw IncompatibleDeviceException("the command characteristic ${protocol.commandCharacteristic} is missing")
-        for (uuid in protocol.statusCharacteristics) {
-            val characteristic = service.getCharacteristic(uuid)
-                ?: throw IncompatibleDeviceException("the status characteristic $uuid is missing")
-            enableUpdates(g, characteristic)
+        val table = g.services.map { service ->
+            GattServiceInfo(service.uuid, service.characteristics.map { GattCharacteristicInfo(it.uuid, it.properties) })
         }
+        val tableLines = GattTable.lines(table)
+        log("GATT services (${table.size}):")
+        tableLines.forEach { log("  $it") }
+        val picked = PitPatTransports.detect(table)
+            ?: throw IncompatibleDeviceException(
+                "no PitPat transport found (looked for FBA0 with FBA1/FBA2, then FF01/FF02, then FFF1/FFF2). " +
+                    "The device offers:\n" + tableLines.joinToString("\n") { "  $it" },
+            )
+        val service = g.services.first {
+            it.uuid == picked.serviceUuid &&
+                it.getCharacteristic(picked.writeUuid) != null && it.getCharacteristic(picked.notifyUuid) != null
+        }
+        val command = service.getCharacteristic(picked.writeUuid)
+        val status = service.getCharacteristic(picked.notifyUuid)
+        // Write with response when the characteristic allows it, as before; otherwise without.
+        writeType = if (picked.writeProperties and BluetoothGattCharacteristic.PROPERTY_WRITE != 0) {
+            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        } else {
+            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+        }
+        commandCharacteristic = command
+        transport = picked
+        log("Transport: ${picked.describe()}")
+        enableUpdates(g, status)
         ready = true
     }
 
@@ -143,8 +172,7 @@ class GattConnection(
     }
 
     private fun startWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, frame: ByteArray): Boolean =
-        g.writeCharacteristic(characteristic, frame, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) ==
-            BluetoothStatusCodes.SUCCESS
+        g.writeCharacteristic(characteristic, frame, writeType) == BluetoothStatusCodes.SUCCESS
 
     private fun deliver(uuid: UUID, value: ByteArray) {
         if (!closed) listener.onData(uuid, value.copyOf())

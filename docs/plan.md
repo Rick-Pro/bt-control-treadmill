@@ -42,11 +42,16 @@ Full contract: `docs/design.md`.
 | D8 | **minSdk 33** | Ricardo's devices run Android 13 or newer. It drops the legacy Bluetooth and location permissions entirely. |
 | D9 | Reconnect on every foreground; keep a live link in the background; let the link go when the app is closed and the belt is stopped | Opening the app should just work. A moving belt keeps its link so STOP keeps working from the notification shade or after a quick app switch. |
 | D10 | Speed step is 0.1 km/h (the pad's own step), shown rounded in the chosen unit | Sending anything finer than the pad's step is noise. In mph the display moves in 0.1 mph steps about every other tap, which matches the PitPat app. |
+| D11 | **`app/debug.keystore` is now the one from Rick-Pro/kestrel-android** (Ricardo, 2026-11-02). Certificate SHA-256 `FF:4A:50:CD:D7:47:A7:D6:D2:FA:47:2E:28:C5:68:C5:7A:A3:DE:AE:91:89:7D:ED:07:6F:C3:E5:96:0F:FE:EA` | One shared test certificate across Ricardo's apps; D6 said "same as kestrel" and now it is literally the same file. It is still the public Android debug key (alias `androiddebugkey`, password `android`), signs test builds only, and is not a secret. The release key never touches the repo. Cost: a Stride Dev build signed with the old test key cannot be updated in place, so it is uninstalled once. |
+| D12 | **Read the whole GATT table, log it, and pick the transport the pad offers**: `FBA0` first, then `FF01`/`FF02` ("PitPat wrapped", 4-byte header), then `FFF1`/`FFF2` ("PitPat FFF") | A pad advertising as "PitPat-T01" connected but has no `FBA0`, so Stride said it does not speak PitPat. The frames are the same in every layout; only the envelope differs. The table is always logged and is part of the error, so the next pad that does not fit can be read from a shared log. Variants 2 and 3 are written from published work (azmke, MIT, for 2) and are untried on a pad. |
+| D13 | **Speed scale: start with thousandths, switch to hundredths on evidence, only on variants 2 and 3** | azmke uses thousandths of km/h, qdomyos-zwift is reported to use hundredths. Switch when the pad's max speed reads below 1.0 km/h, or the echoed target is a tenth of what was sent. A thousandths pad cannot trigger either. Not covered: a pad that echoes our thousandths back as if they were hundredths. Keep the 1.0 to 6.0 km/h clamp. See `docs/protocol.md`. |
 
 ## 5. Needs Ricardo
 | When | What |
 |---|---|
 | Now (one tap) | Set `main` as the default branch: Settings, Branches, switch default to `main`. The repo was empty, so GitHub first made `claude/stride-0.1.0` the default. Claude Code could not do it: the agent proxy blocks repository settings writes. Then delete the old default branch if it is merged. |
+| Before installing the next test build | Uninstall the old "Stride Dev" from the Pixel first (Settings, Apps). The debug key changed (D11), so Android refuses to update over it. Walks are stored on the phone, so uninstalling erases them; if there are none yet, nothing is lost. |
+| First device test, only if Settings shows "PitPat wrapped" or "PitPat FFF" | Do it with the belt clear and the physical remote in your hand. These two layouts are untried on a pad (D12). Tap Start once, watch that the belt speed matches the screen, and Stop. Then share the Diagnostics log: it has the GATT table, the Transport line and any `speed scale:` line. |
 | Before the first release | Run `scripts/make-release-key.sh` once on his own computer. It makes the release key and sets the 4 GitHub settings. Back up the key in the password manager. |
 | First device test | Install the Latest test build on the Pixel 8 Pro, close the PitPat app, turn the pad on, run the checklist in section 8. |
 | First device test | Confirm the max speed the pad reports (shown in Settings, Diagnostics). The app caps the speed slider at it. |
@@ -82,3 +87,5 @@ a written reason in the PR.
 11. Settings: switch to km, numbers convert. Switch back.
 12. History: long-press a walk, Delete, confirm. It is gone after a restart too.
 13. Diagnostics: note the "max" value the pad reports in the status line.
+14. Settings: the Treadmill section shows "Protocol: PitPat" (or "PitPat wrapped", or "PitPat FFF"). Diagnostics has the GATT table at the top of each connection and a "Transport:" line. Share the log once, whatever the result.
+15. Only for "PitPat wrapped" or "PitPat FFF": look for a `speed scale:` line. "thousandths" means the pad echoed the target as sent. "hundredths" means Stride switched; check that the speed on screen matches the pad.

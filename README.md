@@ -17,7 +17,9 @@ The PitPat app that comes with the pad wants an account, plays sounds, shows a 3
 
 ## Compatibility
 
-Made for Ricardo's PitPat **HY-BA06B1** (it advertises as `BA06-73F6`), which speaks the PitPat Bluetooth LE protocol on service `FBA0`. Other PitPat-T01 family pads with the same service (DeerRun, Superun, PitPat-T01) are likely to work. Pads that use the `FF01` or `FFF1` services are not supported. The protocol is in `docs/protocol.md`.
+Made for Ricardo's PitPat **HY-BA06B1** (it advertises as `BA06-73F6`), which speaks the PitPat Bluetooth LE protocol on service `FBA0`. Other PitPat-T01 family pads with the same service (DeerRun, Superun, PitPat-T01) are likely to work.
+
+Stride looks at what the pad offers and uses the first of three layouts it finds: `FBA0` ("PitPat"), `FF01`/`FF02` with a 4-byte header ("PitPat wrapped"), or `FFF1`/`FFF2` ("PitPat FFF"). Only the first has been verified on real pads, by other projects. The other two are written from published protocol work and have not been tried on a pad yet. Settings shows which layout is in use, and the Diagnostics log lists every service the pad offers. The protocol is in `docs/protocol.md`.
 
 Works on Android 13 or newer. Tested first on a Google Pixel 8 Pro.
 
@@ -85,6 +87,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 ## Troubleshooting
 
 - **Find shows nothing.** The PitPat app is probably still connected: force stop it. Make sure the pad is on and Bluetooth is on. Stand within a few metres.
+- **"This device does not speak the PitPat protocol."** The pad offers none of the three layouts. Open Settings, Diagnostics, tap Share, and send it in a bug report: the log lists every service and characteristic the pad offers.
 - **Connected, but Start does nothing and says "no data yet".** The pad has not sent a status frame in the last 3 seconds. Wait a moment; if it stays, tap Reconnect in the banner.
 - **The belt kept running after the phone lost the link.** That is the pad: it keeps the last speed when the link drops. Use the physical remote. Stride reconnects on its own and will show the walk when the belt stops.
 - **Stop not confirmed.** Stride sent STOP three times and the pad still reports the belt moving. Use the remote. Then share the Diagnostics log in a bug report.
@@ -105,8 +108,8 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `docs/plan.md` | Scope, stack, module map, decision log, what only Ricardo can do, first device run checklist |
 | `docs/protocol.md` | The PitPat BLE protocol with the exact frames and their sources |
 | `docs/index.html` | The landing page (GitHub Pages from `docs/`) |
-| `core/` | Pure Kotlin logic with JUnit 4 tests, no Android imports: `protocol` (frames), `control` (STOP-first queue, safety rules, step estimate), `units` (mph and miles), `history` (walk record, walk detection, JSON lines, totals) |
-| `app/` | The Android app: `ble/` (permissions, scanner, GATT), `session/` (the treadmill manager that owns the link, settings, haptics, log), `history/` (the walks file), `ui/` (Setup, Control, History, Settings, theme). `debug.keystore` is the public Android debug key for test builds, not a secret (decision D6) |
+| `core/` | Pure Kotlin logic with JUnit 4 tests, no Android imports: `protocol` (frames, the three pad layouts and how one is picked, the wrapped-pad link), `control` (STOP-first queue, safety rules, step estimate), `units` (mph and miles), `history` (walk record, walk detection, JSON lines, totals) |
+| `app/` | The Android app: `ble/` (permissions, scanner, GATT), `session/` (the treadmill manager that owns the link, settings, haptics, log), `history/` (the walks file), `ui/` (Setup, Control, History, Settings, theme). `debug.keystore` is the public Android debug key for test builds, the same file as Kestrel's, not a secret (decisions D6 and D11) |
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradlew` | Gradle build. All versions are in `gradle/libs.versions.toml` |
 | `VERSION` | The next release version. The Release workflow refuses a tag that does not match |
 | `gradle.properties` | Gradle settings: JVM memory, build cache, parallel builds, AndroidX, Kotlin code style |
@@ -139,12 +142,13 @@ Playbook: mission-control/sops/android-app-release.md.
 
 | Version | What changed |
 |---|---|
-| 0.1.0 | First version. One-screen remote for PitPat FBA0 pads: find and remember the pad, auto-reconnect, start, pause, stop, speed up and down, presets, live time, distance, speed, calories and steps in mph or km, a history of every walk with a speed chart, totals, delete and CSV share, a diagnostics log, and an experimental beeper toggle. |
+| 0.1.0 | First version. One-screen remote for PitPat pads (`FBA0`; `FF01`/`FF02` and `FFF1`/`FFF2` layouts too, untried on a pad yet): find and remember the pad, auto-reconnect, start, pause, stop, speed up and down, presets, live time, distance, speed, calories and steps in mph or km, a history of every walk with a speed chart, totals, delete and CSV share, a diagnostics log, and an experimental beeper toggle. |
 
 ## Credits
 
 - The Bluetooth protocol layer, safety rules and GATT transport are ported from [Franrodr10/pitpat-controller](https://github.com/Franrodr10/pitpat-controller) (MIT). Full notice in `THIRD_PARTY_NOTICES.md`.
-- Protocol facts were cross-checked against [Razzolate99/pitpat-treadmill](https://github.com/Razzolate99/pitpat-treadmill), [sirfergy/HomeAssistantWalkingPad](https://github.com/sirfergy/HomeAssistantWalkingPad) and [azmke/pitpat-treadmill-control](https://github.com/azmke/pitpat-treadmill-control). No code was copied from them.
+- The `FF01`/`FF02` layout (4-byte header, write counter, heartbeat after each notification) follows [azmke/pitpat-treadmill-control](https://github.com/azmke/pitpat-treadmill-control) (MIT). Re-implemented in Kotlin, no code copied. Notice in `THIRD_PARTY_NOTICES.md`.
+- Protocol facts were cross-checked against [Razzolate99/pitpat-treadmill](https://github.com/Razzolate99/pitpat-treadmill) and [sirfergy/HomeAssistantWalkingPad](https://github.com/sirfergy/HomeAssistantWalkingPad). No code was copied from them.
 - Build, CI and release shape from Rick-Pro/kestrel-android.
 
 ## The developer
