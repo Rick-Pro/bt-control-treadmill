@@ -80,7 +80,7 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 - Four preset chips (1.0, 1.5, 2.0, 2.5 mph by default; change them in Settings).
 - A small row: units, History, Settings.
 
-When the app opens from scratch (a cold start, for example after swiping it out of Recents), Android's own splash screen shows the Stride icon on the app's dark background until the first screen is ready. It is the system splash from the theme alone: no library, no extra screen and no added wait, and on a fast phone it is gone in a fraction of a second. Opening Stride while it is still in memory shows no splash; that is how Android works.
+When the app opens from scratch (a cold start, for example after swiping it out of Recents), Android's own splash screen shows the Stride icon on the app's dark background until the first screen is ready (the theme asks for the icon every time, `icon_preferred`). It is the system splash from the theme alone: no library, no extra screen and no added wait, and on a fast phone it is gone in a fraction of a second. Opening Stride while it is still in memory shows no splash; that is how Android works.
 
 The screen stays on while the belt moves. Buttons that cannot work right now say why (not connected, no data yet).
 
