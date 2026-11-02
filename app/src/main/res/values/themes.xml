@@ -6,13 +6,16 @@ background, shown until the first frame is drawn. There is no delay and no anima
 It shows on a cold start only, when Android has to start the app's process: tapping the icon while Stride is still
 in memory (a warm or hot start) brings the old window back with no splash, and on a fast phone the cold-start splash
 is gone in a fraction of a second. The theme is on <application>, so MainActivity (which sets no theme of its own)
-uses it. The icon is ic_splash_icon, the launcher foreground inset to fit the splash's circular mask. -->
+uses it. The icon is ic_splash_icon, the launcher foreground inset to fit the splash's circular mask.
+windowSplashScreenBehavior is icon_preferred so Android always draws the icon. With the default, the system can
+show a background-only splash, which here looks like nothing because the splash and the window share a color. -->
 <resources>
     <style name="Theme.Stride" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/stride_bg</item>
         <item name="android:colorBackground">@color/stride_bg</item>
         <item name="android:windowSplashScreenBackground">@color/stride_bg</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>
