@@ -10,6 +10,9 @@ class FrameReassembler(private val gapMs: Long = 300) {
     private var buffer = ByteArray(0)
     private var lastMs = 0L
 
+    /** True while the start of a frame is waiting for its rest, so the next chunk continues it. */
+    fun hasPending(timeMs: Long): Boolean = buffer.isNotEmpty() && timeMs - lastMs <= gapMs
+
     fun feed(chunk: ByteArray, timeMs: Long): List<ByteArray> {
         if (buffer.isNotEmpty() && timeMs - lastMs > gapMs) buffer = ByteArray(0)
         lastMs = timeMs

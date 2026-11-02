@@ -19,6 +19,9 @@ object PitPatProtocol : TreadmillProtocol {
         get() = byteArrayOf(0x6A, 0x05, 0xFD.toByte(), 0xF8.toByte(), END.toByte())
     override val keepAliveIntervalMs = 1_000L
 
+    /** Raw speed units per km/h in the documented frames: thousandths. */
+    const val SPEED_UNITS_PER_KMH = 1000
+
     private const val COMMAND_START = 0x6A
     private const val END = 0x43
     private const val OP_STOP = 0x00
@@ -74,7 +77,13 @@ object PitPatProtocol : TreadmillProtocol {
         frame.size >= 5 && (frame[1].toInt() and 0xFF) == frame.size &&
             frame.last() == END.toByte() && frame[frame.size - 2] == checksum(frame)
 
-    fun parseStatus(frame: ByteArray): TreadmillStatus? {
+    fun parseStatus(frame: ByteArray): TreadmillStatus? = parseStatus(frame, SPEED_UNITS_PER_KMH)
+
+    /**
+     * [unitsPerKmh] is how many raw speed units make 1 km/h: 1000 (thousandths, the documented scale) or 100
+     * (hundredths, which some pads are reported to use). Only the three speed fields depend on it.
+     */
+    fun parseStatus(frame: ByteArray, unitsPerKmh: Int): TreadmillStatus? {
         if (frame.size < MIN_STATUS_LENGTH || !isValidFrame(frame)) return null
         fun u8(i: Int) = frame[i].toInt() and 0xFF
         fun u16(i: Int) = (u8(i) shl 8) or u8(i + 1)
@@ -88,13 +97,13 @@ object PitPatProtocol : TreadmillProtocol {
         }
         return TreadmillStatus(
             state = state,
-            speedKmh = u16(3) / 1000.0,
-            targetSpeedKmh = u16(5) / 1000.0,
+            speedKmh = u16(3) / unitsPerKmh.toDouble(),
+            targetSpeedKmh = u16(5) / unitsPerKmh.toDouble(),
             distanceKm = u32(7) / 1000.0,
             durationSeconds = if (firmware > 19) u32(20) / 1000 else u32(20), // ms since firmware 20
             steps = u32(14),
             kcal = u16(18),
-            maxSpeedKmh = u16(27).takeIf { it > 0 }?.let { it / 1000.0 },
+            maxSpeedKmh = u16(27).takeIf { it > 0 }?.let { it / unitsPerKmh.toDouble() },
         )
     }
 

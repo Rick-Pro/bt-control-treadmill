@@ -97,10 +97,12 @@
     <string name="settings_presets">Speed presets</string>
     <string name="settings_presets_body">Four quick speeds for the chips on the main screen, in %1$s.</string>
     <string name="settings_treadmill">Treadmill</string>
+    <string name="settings_protocol">Protocol: %1$s</string>
+    <string name="settings_protocol_none">not connected yet</string>
     <string name="settings_forget_body">Forget %1$s and set up again.</string>
     <string name="settings_diagnostics">Diagnostics log</string>
     <string name="settings_diagnostics_body">Connection events and frames. Nothing leaves the phone unless you share it.</string>
     <string name="settings_about">About</string>
-    <string name="settings_about_body">Stride %1$s. One screen for the PitPat walking pad: start, pause, stop, speed, and a history of walks. No account, no internet, no ads. Protocol work based on Franrodr10/pitpat-controller (MIT).</string>
+    <string name="settings_about_body">Stride %1$s. One screen for the PitPat walking pad: start, pause, stop, speed, and a history of walks. No account, no internet, no ads. Protocol work based on Franrodr10/pitpat-controller and azmke/pitpat-treadmill-control (both MIT).</string>
     <string name="settings_save">Save</string>
 </resources>

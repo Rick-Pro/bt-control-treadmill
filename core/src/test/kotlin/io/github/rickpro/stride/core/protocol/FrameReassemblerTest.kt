@@ -3,6 +3,7 @@ package io.github.rickpro.stride.core.protocol
 import org.junit.Test
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 
 class FrameReassemblerTest {
@@ -30,6 +31,17 @@ class FrameReassemblerTest {
         reassembler.feed(frame.copyOfRange(0, 20), 0)
         val out = reassembler.feed(frame, 1_000)
         assertArrayEquals(frame, out.single())
+    }
+
+    @Test
+    fun `says when a frame is waiting for its rest`() {
+        val reassembler = FrameReassembler(gapMs = 300)
+        assertFalse(reassembler.hasPending(0))
+        reassembler.feed(frame.copyOfRange(0, 20), 100)
+        assertTrue(reassembler.hasPending(150))
+        assertFalse(reassembler.hasPending(1_000)) // older than the gap: it would be dropped
+        reassembler.feed(frame.copyOfRange(20, 52), 200)
+        assertFalse(reassembler.hasPending(210))
     }
 
     @Test

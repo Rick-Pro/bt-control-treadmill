@@ -21,9 +21,9 @@ import io.github.rickpro.stride.core.control.CommandScheduler
 import io.github.rickpro.stride.core.control.SessionController
 import io.github.rickpro.stride.core.control.StepEstimator
 import io.github.rickpro.stride.core.history.WorkoutRecorder
+import io.github.rickpro.stride.core.protocol.PitPatLink
 import io.github.rickpro.stride.core.protocol.PitPatProtocol
 import io.github.rickpro.stride.core.protocol.RunState
-import io.github.rickpro.stride.core.protocol.StatusDecoder
 import io.github.rickpro.stride.core.protocol.TreadmillProtocol
 import io.github.rickpro.stride.core.protocol.TreadmillStatus
 import io.github.rickpro.stride.core.protocol.toHex
@@ -100,6 +100,8 @@ class TreadmillManager(
         /** True while a walk is open in the recorder (it will land in History when it ends). */
         val recording: Boolean = false,
         val alert: Alert? = null,
+        /** Name of the PitPat transport in use (or last used), for Settings; null until a pad has connected. */
+        val transport: String? = null,
     ) {
         val isActive: Boolean get() = link == Link.CONNECTING || link == Link.CONNECTED || link == Link.RECONNECTING
         val isConnected: Boolean get() = link == Link.CONNECTED
@@ -118,7 +120,8 @@ class TreadmillManager(
     private val stepEstimator = StepEstimator()
     private val recorder = WorkoutRecorder()
     private val incomingLog = IncomingLog()
-    private var decoder: StatusDecoder? = null
+    /** Wire format of the current connection (header, counter, speed scale); null while not connected. */
+    private var codec: PitPatLink? = null
     private var session: Job? = null
     private var linkLost: CompletableDeferred<Unit>? = null
     private var writing = false
@@ -194,7 +197,7 @@ class TreadmillManager(
     fun forget() = onBle {
         stopSession()
         settings.forgetDevice()
-        _state.update { it.copy(link = Link.NO_DEVICE, deviceName = null) }
+        _state.update { it.copy(link = Link.NO_DEVICE, deviceName = null, transport = null) }
     }
 
     fun startOrPause() = onBle { handle(controller.startOrPause(isConnected(), now())) }
@@ -235,8 +238,10 @@ class TreadmillManager(
     fun dismissAlert() = onBle { _state.update { it.copy(alert = null) } }
 
     /** The app version and the whole diagnostics log, for Share. */
-    fun diagnosticsText(): String =
-        (listOf("Stride $appVersion diagnostics") + log.snapshot()).joinToString("\n") + "\n"
+    fun diagnosticsText(): String {
+        val header = listOfNotNull("Stride $appVersion diagnostics", _state.value.transport?.let { "Protocol: $it" })
+        return (header + log.snapshot()).joinToString("\n") + "\n"
+    }
 
     private fun onBle(block: suspend () -> Unit) {
         scope.launch { block() }
@@ -279,7 +284,7 @@ class TreadmillManager(
             var connection: GattConnection? = null
             var linkWasUp = false
             try {
-                connection = GattConnection(context, bluetooth.getRemoteDevice(address), protocol, handler, gattListener)
+                connection = GattConnection(context, bluetooth.getRemoteDevice(address), handler, gattListener, log::add)
                 log.add("Connecting to ${settings.deviceName ?: protocol.name}")
                 connection.open()
                 linkWasUp = true
@@ -307,7 +312,7 @@ class TreadmillManager(
     }
 
     private val gattListener = object : GattConnection.Listener {
-        override fun onData(characteristic: UUID, value: ByteArray) = onIncoming(characteristic, value)
+        override fun onData(characteristic: UUID, value: ByteArray) = onIncoming(value)
 
         override fun onDisconnected(status: Int) {
             log.add("!! Connection lost (${GattConnection.describe(status)})")
@@ -316,15 +321,21 @@ class TreadmillManager(
     }
 
     private fun onConnected(connection: GattConnection) {
-        decoder = protocol.newDecoder()
+        val variant = checkNotNull(connection.transport) { "connected without a transport" }.variant
+        codec = PitPatLink(variant, log::add)
         stepEstimator.reset()
         scheduler.clear()
         incomingLog.reset()
         lastDataAtMs = now()
         val previous = _state.value.alert
         val wasLost = previous == Alert.LINK_LOST || previous == Alert.LINK_LOST_WHILE_MOVING
-        log.add("Connected (MTU ${connection.mtu}, keep-alive ${if (settings.keepAliveEnabled) "on" else "off"})")
-        _state.update { it.copy(link = Link.CONNECTED, attempt = 0, alert = if (wasLost) null else it.alert) }
+        log.add(
+            "Connected: ${variant.displayName} (MTU ${connection.mtu}, " +
+                "${if (variant.heartbeatPerNotification) "heartbeat" else "keep-alive"} ${if (settings.keepAliveEnabled) "on" else "off"})",
+        )
+        _state.update {
+            it.copy(link = Link.CONNECTED, attempt = 0, alert = if (wasLost) null else it.alert, transport = variant.displayName)
+        }
         if (wasLost) _messages.tryEmit(Message.RECONNECTED)
     }
 
@@ -350,7 +361,7 @@ class TreadmillManager(
         val wasMoving = _state.value.status?.isMoving == true
         scheduler.clear()
         controller.onLinkDown()
-        decoder = null
+        codec = null
         recorder.onLinkDown(System.currentTimeMillis())?.let { finished ->
             historyStore.add(finished)
             log.add("Walk saved: ${finished.durationSeconds} s, ${"%.2f".format(Locale.ROOT, finished.distanceKm)} km")
@@ -366,10 +377,10 @@ class TreadmillManager(
 
     // ------------------------------------------------------------------ data in, commands out
 
-    private fun onIncoming(characteristic: UUID, value: ByteArray) {
+    private fun onIncoming(value: ByteArray) {
         val now = now()
         lastDataAtMs = now
-        val statuses = decoder?.decode(characteristic, value, now).orEmpty()
+        val statuses = codec?.decode(value, now).orEmpty()
         incomingLog.line(value, statuses.lastOrNull(), now)?.let(log::add)
         for (status in statuses) {
             handle(controller.onStatus(status, now))
@@ -385,6 +396,23 @@ class TreadmillManager(
                 )
             }
         }
+        answerNotification()
+    }
+
+    /**
+     * A wrapped pad is kept alive by answering each of its notifications with one heartbeat, not by a timer. The
+     * heartbeat is skipped when a command is queued or being written, so it never delays a real command.
+     */
+    private fun answerNotification() {
+        if (codec?.heartbeatPerNotification != true) return
+        queueKeepAlive("heartbeat")
+    }
+
+    private fun queueKeepAlive(label: String) {
+        val frame = protocol.keepAliveFrame ?: return
+        if (!settings.keepAliveEnabled || writing || !scheduler.isEmpty) return
+        scheduler.submit(Command(CommandKind.KEEP_ALIVE, frame, label))
+        wakeWriter.trySend(Unit)
     }
 
     private fun handle(outcome: SessionController.Outcome) {
@@ -415,14 +443,16 @@ class TreadmillManager(
                 wakeWriter.receive()
                 continue
             }
+            // What goes on the wire: the frame itself, or for a wrapped pad the frame with its header and counter.
+            val wire = (codec ?: return).encode(command.frame)
             writing = true
             val result = try {
-                connection.write(command.frame)
+                connection.write(wire)
             } finally {
                 writing = false
             }
             if (command.kind != CommandKind.KEEP_ALIVE || result != WriteResult.OK) {
-                log.add("-> ${command.frame.toHex()} (${command.label}) ${result.name.lowercase(Locale.ROOT)}")
+                log.add("-> ${wire.toHex()} (${command.label}) ${result.name.lowercase(Locale.ROOT)}")
             }
             if (command.kind == CommandKind.STOP) onStopWritten(command, result)
         }
@@ -444,13 +474,11 @@ class TreadmillManager(
     }
 
     private suspend fun keepAliveLoop() {
-        val frame = protocol.keepAliveFrame ?: return
+        if (protocol.keepAliveFrame == null) return
+        if (codec?.heartbeatPerNotification == true) return // answered after each notification instead, see above
         while (true) {
             delay(protocol.keepAliveIntervalMs)
-            if (settings.keepAliveEnabled && !writing && scheduler.isEmpty) {
-                scheduler.submit(Command(CommandKind.KEEP_ALIVE, frame, "keep-alive"))
-                wakeWriter.trySend(Unit)
-            }
+            queueKeepAlive("keep-alive")
         }
     }
 
