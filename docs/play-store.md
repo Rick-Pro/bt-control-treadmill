@@ -56,6 +56,10 @@ The version code goes up with every upload by itself: `major x 1,000,000 + minor
 - **Content rating:** complete the questionnaire (no violence, no user content, no data sharing). Expect "Everyone".
 - **Permissions:** Nearby devices (Bluetooth scan with `neverForLocation`, and connect) and Vibrate. Reason: find and control the treadmill.
 - **Target API:** Stride targets API 37, which is fine.
+- **Donation link:** the About screen has a Support Stride row that opens Buy Me a Coffee in the browser. Google Play's payments
+  policy limits apps that ask for money outside Google Play Billing, and a tip link may be read that way. Read the current policy
+  text in the Play Console help before the closed test. If it is a problem, tell Claude Code and the Play build ships without the
+  row (the GitHub build can keep it).
 
 ## 6. The closed test (required for personal accounts)
 A personal developer account created after November 2023 must run a **closed test with at least 12 testers opted in for 14

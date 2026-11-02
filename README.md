@@ -6,6 +6,7 @@ One-screen Android remote for PitPat walking pads. No account, no internet, no a
 
 [![CI](https://github.com/Rick-Pro/stride-android/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Rick-Pro/stride-android/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/ricardouzcategui)
 
 Start, pause, stop, faster, slower. Time, distance, speed, calories, steps. Every walk saved on the phone. That is the whole app.
 
@@ -89,7 +90,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 
 **Me (in Settings, optional).** Sex, height, weight and, if you like, age, in the units you picked. They stay in this app's private storage on the phone: no account, no network, no backup. They are used for three things only: the calorie estimate (the standard walking equation from the American College of Sports Medicine: MET from speed, then MET x kg x hours; it is an estimate, not a measurement); the step length for the step estimate (0.413 x height for women, 0.415 x height for men, in between for other); and your weight, sent to the pad in each command so the pad's own calorie count has it. The weight is hidden in the Diagnostics log. Remove clears everything.
 
-**Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), and **About**: the version, which pad Stride is for, the developer (a tap opens ricardouzcategui.com in the browser), credits for the work Stride stands on, the GitHub project, the MIT license line and the privacy policy. Links open in the browser; Stride itself still has no internet permission.
+**Settings.** Units (mph or km), keep the screen on, presets, Me, treadmill beeper on or off (experimental, see `docs/plan.md` D7), Forget treadmill, Diagnostics log (connection events and frames, shareable for a bug report, no addresses), and **About**: the version, which pad Stride is for, the developer (a tap opens ricardouzcategui.com in the browser), credits for the work Stride stands on, the GitHub project, a Support Stride link, the MIT license line and the privacy policy. Links open in the browser; Stride itself still has no internet permission.
 
 ## What it will not do
 
@@ -126,7 +127,7 @@ Open a [new issue](https://github.com/Rick-Pro/stride-android/issues/new/choose)
 
 - **Something broke, or you have a different pad?** Use the Bug report form above. A report from a pad we have not tried is the most useful thing you can send.
 - **Like it?** Star the repo and tell another walker.
-- **Chip in.** The Sponsor button on the repo page goes to [ricardouzcategui.com](https://ricardouzcategui.com) for now. Stride is free to use, with no ads and nothing to buy inside the app.
+- **Chip in.** [Buy Me a Coffee](https://buymeacoffee.com/ricardouzcategui), or a one-time card payment through [Stripe](https://buy.stripe.com/6oUbJ05fZ39HcVwfRX9IQ00). Both are also behind the repo's Sponsor button and the **Support Stride** row on the About screen. Stride is free to use, with no ads and nothing to buy inside the app.
 - **Help build it.** See [CONTRIBUTING.md](CONTRIBUTING.md): the rules are short.
 
 ## Repo map
@@ -146,7 +147,7 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradlew` | Gradle build. All versions are in `gradle/libs.versions.toml` |
 | `VERSION` | The next release version. The Release workflow refuses a tag that does not match |
 | `gradle.properties` | Gradle settings: JVM memory, build cache, parallel builds, AndroidX, Kotlin code style |
-| `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/` | The Sponsor button's target (the developer's site for now) and the Bug report form |
+| `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/` | The Sponsor button's targets (Buy Me a Coffee and a Stripe link) and the Bug report form |
 | `.github/workflows/` | `ci.yml`: core tests, then the app build, lint, allow-lists and APK size, on every PR and push to main. `test-build.yml`: the rolling Latest test build after each push to main. `release.yml`: the manual Release (Actions, Release, Run workflow, vX.Y.Z), see Releasing a new version |
 | `config/` | Allow-lists CI enforces: the permissions the app may ask for and the dependency groups it may ship |
 | `scripts/` | `ci-*.sh`: CI helpers (Gradle error summary, permission, dependency, APK size and debug signer checks). `core-check-offline.sh`: compiles and tests `core/` without network, with the Kotlin compiler from a local Gradle install. `make-release-key.sh`: makes the release key once and sets the GitHub secrets. `release-preflight.sh`, `release-sign.sh`, `release-sign-aab.sh`: the Release workflow's checks and signing of the APK and the App Bundle |
@@ -177,7 +178,7 @@ The exact steps for the key are in `docs/plan.md`, section 5. Playbook: mission-
 
 | Version | What changed |
 |---|---|
-| 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. Open source under the MIT license, with a License line and a privacy policy link on the About screen, a CONTRIBUTING guide, a Bug report form and a Compatible pads list. |
+| 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. Open source under the MIT license, with a License line and a privacy policy link on the About screen, a CONTRIBUTING guide, a Bug report form, a Compatible pads list, and Buy Me a Coffee and Stripe links for anyone who wants to chip in. |
 
 ## Credits
 
