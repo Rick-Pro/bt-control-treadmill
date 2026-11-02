@@ -6,6 +6,7 @@ import java.util.Locale
  * One walk per line of JSON, written and read without any library. The format is flat on purpose:
  * {"id":"w-1","startedAt":1,"endedAt":2,"duration":3,"distanceKm":0.5,"kcal":9,"steps":100,
  *  "stepsEstimated":true,"avgKmh":2.0,"maxKmh":3.0,"samples":[[0,1.0],[5,2.0]]}
+ * plus "kcalEstimate":12 when Stride estimated the calories from a profile (older lines have none).
  * Unknown keys are ignored, so a newer app can read an older file and the other way round.
  */
 object WorkoutJson {
@@ -18,6 +19,7 @@ object WorkoutJson {
         sb.append(",\"duration\":").append(w.durationSeconds)
         sb.append(",\"distanceKm\":").append(number(w.distanceKm))
         sb.append(",\"kcal\":").append(w.kcal)
+        w.estimatedKcal?.let { sb.append(",\"kcalEstimate\":").append(it) }
         sb.append(",\"steps\":").append(w.steps)
         sb.append(",\"stepsEstimated\":").append(w.stepsEstimated)
         sb.append(",\"avgKmh\":").append(number(w.avgSpeedKmh))
@@ -57,6 +59,7 @@ object WorkoutJson {
             avgSpeedKmh = num("avgKmh") ?: return null,
             maxSpeedKmh = num("maxKmh") ?: return null,
             samples = samples,
+            estimatedKcal = num("kcalEstimate")?.toInt(),
         )
     }
 

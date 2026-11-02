@@ -42,4 +42,39 @@ class StepEstimatorTest {
         assertEquals(93.5, StepEstimator.cadence(3.0), 0.001)
         assertEquals(125.0, StepEstimator.cadence(6.0), 0.001)
     }
+
+    @Test
+    fun `uses the step length from the profile when the pad reports no steps`() {
+        val estimator = StepEstimator()
+        estimator.update(status(0.0, 0), userStepLengthM = 0.7)
+        val steps = estimator.update(status(0.7, 630), userStepLengthM = 0.7) // 700 m at 0.7 m a step
+        assertEquals(StepEstimator.Steps(1000, estimated = true), steps)
+    }
+
+    @Test
+    fun `a longer step means fewer steps over the same distance`() {
+        fun count(stepLengthM: Double): Long {
+            val estimator = StepEstimator()
+            estimator.update(status(0.0, 0), stepLengthM)
+            return estimator.update(status(1.0, 900), stepLengthM).count
+        }
+        assertEquals(1250L, count(0.8))
+        assertEquals(1429L, count(0.7))
+        assertTrue(count(0.8) < count(0.7))
+    }
+
+    @Test
+    fun `the profile step length applies when joining a walk late, and the pad's own count still wins`() {
+        val late = StepEstimator()
+        assertEquals(StepEstimator.Steps(1000, estimated = true), late.update(status(0.7, 630), userStepLengthM = 0.7))
+        val padCounts = StepEstimator()
+        assertEquals(StepEstimator.Steps(321, estimated = false), padCounts.update(status(0.2, 180, steps = 321), userStepLengthM = 0.7))
+    }
+
+    @Test
+    fun `without a profile the speed-based step length is used as before`() {
+        val estimator = StepEstimator()
+        estimator.update(status(0.0, 0))
+        assertTrue(estimator.update(status(1.0, 900)).count in 1500..1620)
+    }
 }

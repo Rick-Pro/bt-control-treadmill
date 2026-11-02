@@ -272,4 +272,100 @@ class PitPatLinkTest {
         assertTrue(logged.isEmpty())
         assertNotNull(status.maxSpeedKmh)
     }
+
+    // ------------------------------------------------------------------ the weight byte
+
+    private fun byte(frame: ByteArray, i: Int) = frame[i].toInt() and 0xFF
+
+    @Test
+    fun `without a weight the frames go out as built, at 80 kg`() {
+        val link = PitPatLink(PitPatVariant.CLASSIC)
+        assertArrayEquals(PitPatProtocol.startFrame(1.0), link.encode(PitPatProtocol.startFrame(1.0)))
+        assertEquals(0x50, byte(link.encode(PitPatProtocol.stopFrame()), 10))
+    }
+
+    @Test
+    fun `the person's weight goes into byte 10 with a valid checksum`() {
+        val link = PitPatLink(PitPatVariant.CLASSIC)
+        link.weightKg = 72
+        // Computed independently: the 1.0 km/h start frame with 0x48 in byte 10 and the XOR redone.
+        val expected = hex("6A 17 00 00 00 00 03 E8 01 00 48 00 04 00 00 00 0D BA 9D 76 EF 02 43")
+        assertArrayEquals(expected, link.encode(PitPatProtocol.startFrame(1.0)))
+        for (frame in listOf(PitPatProtocol.startFrame(2.5), PitPatProtocol.speedFrame(3.0), PitPatProtocol.pauseFrame(), PitPatProtocol.stopFrame())) {
+            val sent = link.encode(frame)
+            assertEquals(72, byte(sent, 10))
+            assertTrue(PitPatProtocol.isValidFrame(sent))
+            // everything but the weight byte and the checksum is untouched
+            for (i in sent.indices) if (i != 10 && i != 21) assertEquals("byte $i", frame[i], sent[i])
+        }
+    }
+
+    @Test
+    fun `the weight byte is clamped to 1 to 255`() {
+        val link = PitPatLink(PitPatVariant.CLASSIC)
+        link.weightKg = 0
+        assertArrayEquals(hex("6A 17 00 00 00 00 03 E8 01 00 01 00 04 00 00 00 0D BA 9D 76 EF 4B 43"), link.encode(PitPatProtocol.startFrame(1.0)))
+        link.weightKg = 300
+        assertArrayEquals(hex("6A 17 00 00 00 00 03 E8 01 00 FF 00 04 00 00 00 0D BA 9D 76 EF B5 43"), link.encode(PitPatProtocol.startFrame(1.0)))
+        link.weightKg = -5
+        assertEquals(1, byte(link.encode(PitPatProtocol.stopFrame()), 10))
+    }
+
+    @Test
+    fun `clearing the weight puts the default back`() {
+        val link = PitPatLink(PitPatVariant.CLASSIC)
+        link.weightKg = 65
+        assertEquals(65, byte(link.encode(PitPatProtocol.stopFrame()), 10))
+        link.weightKg = null
+        assertEquals(0x50, byte(link.encode(PitPatProtocol.stopFrame()), 10))
+    }
+
+    @Test
+    fun `frames that are not control frames keep their bytes`() {
+        val link = PitPatLink(PitPatVariant.CLASSIC)
+        link.weightKg = 72
+        assertArrayEquals(PitPatProtocol.keepAliveFrame, link.encode(PitPatProtocol.keepAliveFrame))
+        val beeper = PitPatProtocol.beeperFrame(true)
+        assertArrayEquals(beeper, link.encode(beeper))
+    }
+
+    @Test
+    fun `the weight rides inside the wrapper and together with the speed scale`() {
+        val link = wrapped()
+        link.weightKg = 72
+        val sent = PitPatWrapper.unwrap(link.encode(PitPatProtocol.startFrame(1.0)))!!
+        assertArrayEquals(hex("6A 17 00 00 00 00 03 E8 01 00 48 00 04 00 00 00 0D BA 9D 76 EF 02 43"), sent)
+
+        val hundredths = wrapped()
+        hundredths.weightKg = 72
+        hundredths.decode(PitPatWrapper.wrap(0, TestFrames.status(flags = 0x82, speed = 0, target = 0, maxSpeed = 600)), 0)
+        val both = PitPatWrapper.unwrap(hundredths.encode(PitPatProtocol.startFrame(2.0)))!!
+        assertEquals(200, (byte(both, 6) shl 8) or byte(both, 7)) // hundredths
+        assertEquals(72, byte(both, 10)) // and the weight
+        assertTrue(PitPatProtocol.isValidFrame(both))
+    }
+
+    @Test
+    fun `the log hides the weight byte while a weight is set, and only then`() {
+        val plain = PitPatLink(PitPatVariant.CLASSIC)
+        val start = plain.encode(PitPatProtocol.startFrame(1.0))
+        assertEquals("6A 17 00 00 00 00 03 E8 01 00 50 00 04 00 00 00 0D BA 9D 76 EF 1A 43", plain.hexForLog(start)) // no weight: shown as is
+
+        val link = PitPatLink(PitPatVariant.CLASSIC)
+        link.weightKg = 72
+        val withWeight = link.encode(PitPatProtocol.startFrame(1.0))
+        assertEquals("6A 17 00 00 00 00 03 E8 01 00 WW 00 04 00 00 00 0D BA 9D 76 EF 02 43", link.hexForLog(withWeight))
+        assertTrue(!link.hexForLog(withWeight).contains("48")) // the 0x48 = 72 kg is nowhere in the text
+
+        val wrappedLink = wrapped()
+        wrappedLink.weightKg = 72
+        val wire = wrappedLink.encode(PitPatProtocol.stopFrame())
+        val text = wrappedLink.hexForLog(wire)
+        // header 4D 00 00 17, then the stop frame up to the end of its user id: the weight sits at frame offset 10
+        assertEquals("4D 00 00 17 6A 17 00 00 00 00 00 00 01 00 WW 00 00 00 00 00 0D BA 9D 76 EF", text.split(" ").take(25).joinToString(" "))
+        assertEquals(1, text.split(" ").count { it == "WW" })
+
+        // frames that are not control frames are shown whole
+        assertEquals("4D 00 01 05 6A 05 FD F8 43", wrappedLink.hexForLog(wrappedLink.encode(PitPatProtocol.keepAliveFrame)))
+    }
 }

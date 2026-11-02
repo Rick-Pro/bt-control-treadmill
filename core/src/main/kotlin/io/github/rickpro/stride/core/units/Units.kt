@@ -9,6 +9,9 @@ enum class MeasureUnit { METRIC, IMPERIAL }
 /** Conversion and text formatting for everything the screen shows. No locale surprises: always a dot. */
 object Units {
     const val KM_PER_MILE = 1.609344
+    const val CM_PER_INCH = 2.54
+    const val INCHES_PER_FOOT = 12
+    const val LB_PER_KG = 2.2046226218
 
     fun kmToMi(km: Double): Double = km / KM_PER_MILE
 
@@ -43,6 +46,22 @@ object Units {
         val totalSeconds = (perUnitHours * 3600).roundToInt()
         return String.format(Locale.ROOT, "%d'%02d\"", totalSeconds / 60, totalSeconds % 60)
     }
+
+    fun cmToInches(cm: Double): Double = cm / CM_PER_INCH
+
+    fun inchesToCm(inches: Double): Double = inches * CM_PER_INCH
+
+    fun feetAndInchesToCm(feet: Int, inches: Double): Double = inchesToCm(feet * INCHES_PER_FOOT + inches)
+
+    /** Height as whole feet and whole inches, rounded to the nearest inch: 175 cm is 5 ft 9 in. */
+    fun cmToFeetAndInches(cm: Double): Pair<Int, Int> {
+        val totalInches = cmToInches(cm).roundToInt()
+        return totalInches / INCHES_PER_FOOT to totalInches % INCHES_PER_FOOT
+    }
+
+    fun kgToLb(kg: Double): Double = kg * LB_PER_KG
+
+    fun lbToKg(lb: Double): Double = lb / LB_PER_KG
 
     private fun oneDecimal(value: Double): String = String.format(Locale.ROOT, "%.1f", value)
 }

@@ -22,6 +22,8 @@ import io.github.rickpro.stride.core.control.SessionController
 import io.github.rickpro.stride.core.control.StartCountdown
 import io.github.rickpro.stride.core.control.StepEstimator
 import io.github.rickpro.stride.core.history.WorkoutRecorder
+import io.github.rickpro.stride.core.profile.CalorieEstimator
+import io.github.rickpro.stride.core.profile.Profile
 import io.github.rickpro.stride.core.protocol.PitPatLink
 import io.github.rickpro.stride.core.protocol.PitPatProtocol
 import io.github.rickpro.stride.core.protocol.RunState
@@ -111,6 +113,10 @@ class TreadmillManager(
         val disconnectedByUser: Boolean = false,
         /** When the pad's start countdown (STARTING) began, on the manager's monotonic clock, or null. */
         val startingSinceMs: Long? = null,
+        /** The person's profile for calories and steps (local only), or null. */
+        val profile: Profile? = null,
+        /** Stride's own calorie estimate for the walk so far, or null without a profile. */
+        val estimatedKcal: Int? = null,
     ) {
         val isActive: Boolean get() = link == Link.CONNECTING || link == Link.CONNECTED || link == Link.RECONNECTING
         val isConnected: Boolean get() = link == Link.CONNECTED
@@ -129,6 +135,8 @@ class TreadmillManager(
     private val wakeWriter = Channel<Unit>(Channel.CONFLATED)
     private val stepEstimator = StepEstimator()
     private val countdown = StartCountdown()
+    private val calorieEstimator = CalorieEstimator()
+    private var profile: Profile? = settings.profile
     private val recorder = WorkoutRecorder()
     private val incomingLog = IncomingLog()
     /** Wire format of the current connection (header, counter, speed scale); null while not connected. */
@@ -148,6 +156,7 @@ class TreadmillManager(
             speedRange = controller.speedRange,
             unit = settings.unit,
             presetsKmh = settings.presetsKmh,
+            profile = settings.profile,
         ),
     )
     val state: StateFlow<State> = _state.asStateFlow()
@@ -269,6 +278,20 @@ class TreadmillManager(
         _state.update { it.copy(presetsKmh = clean) }
     }
 
+    /**
+     * Saves the person's profile, or removes it with null. An invalid profile is ignored. The weight goes into the
+     * control frames from the next write on, so the pad's own calories improve too.
+     */
+    fun setProfile(newProfile: Profile?) = onBle {
+        if (newProfile != null && !newProfile.isValid) return@onBle
+        settings.profile = newProfile
+        profile = newProfile
+        codec?.weightKg = newProfile?.weightByte
+        calorieEstimator.reset() // the next status catches the walk up with the new weight
+        _state.update { it.copy(profile = newProfile, estimatedKcal = null) }
+        log.add(if (newProfile == null) "Profile removed" else "Profile saved") // never the values: logs get shared
+    }
+
     fun dismissAlert() = onBle { _state.update { it.copy(alert = null) } }
 
     /** The app version and the whole diagnostics log, for Share. */
@@ -364,8 +387,9 @@ class TreadmillManager(
 
     private fun onConnected(connection: GattConnection) {
         val variant = checkNotNull(connection.transport) { "connected without a transport" }.variant
-        codec = PitPatLink(variant, log::add)
+        codec = PitPatLink(variant, log::add).also { it.weightKg = profile?.weightByte }
         stepEstimator.reset()
+        calorieEstimator.reset()
         countdown.reset()
         scheduler.clear()
         incomingLog.reset()
@@ -416,7 +440,7 @@ class TreadmillManager(
         _state.update {
             it.copy(
                 status = null, fresh = false, steps = null, speedRange = controller.speedRange,
-                recording = recorder.isRecording, startingSinceMs = null,
+                recording = recorder.isRecording, startingSinceMs = null, estimatedKcal = null,
             )
         }
         if (!byUser) {
@@ -440,15 +464,16 @@ class TreadmillManager(
                 )
             }
             handle(controller.onStatus(status, now))
-            val steps = stepEstimator.update(status)
-            recorder.update(status, steps, System.currentTimeMillis())?.let { finished ->
+            val steps = stepEstimator.update(status, profile?.stepLengthM)
+            val kcal = calorieEstimator.update(status, profile)
+            recorder.update(status, steps, System.currentTimeMillis(), kcal)?.let { finished ->
                 historyStore.add(finished)
                 log.add("Walk saved: ${finished.durationSeconds} s, ${"%.2f".format(Locale.ROOT, finished.distanceKm)} km")
             }
             _state.update {
                 it.copy(
                     status = status, fresh = true, steps = steps, recording = recorder.isRecording,
-                    startingSinceMs = countdown.startedAtMs,
+                    startingSinceMs = countdown.startedAtMs, estimatedKcal = kcal,
                     alert = if (it.alert == Alert.STOP_NOT_CONFIRMED && !status.isMoving) null else it.alert,
                 )
             }
@@ -501,7 +526,8 @@ class TreadmillManager(
                 continue
             }
             // What goes on the wire: the frame itself, or for a wrapped pad the frame with its header and counter.
-            val wire = (codec ?: return).encode(command.frame)
+            val activeCodec = codec ?: return
+            val wire = activeCodec.encode(command.frame)
             writing = true
             val result = try {
                 connection.write(wire)
@@ -509,7 +535,7 @@ class TreadmillManager(
                 writing = false
             }
             if (command.kind != CommandKind.KEEP_ALIVE || result != WriteResult.OK) {
-                log.add("-> ${wire.toHex()} (${command.label}) ${result.name.lowercase(Locale.ROOT)}")
+                log.add("-> ${activeCodec.hexForLog(wire)} (${command.label}) ${result.name.lowercase(Locale.ROOT)}")
             }
             if (command.kind == CommandKind.STOP) onStopWritten(command, result)
         }

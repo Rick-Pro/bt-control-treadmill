@@ -1,5 +1,6 @@
 package io.github.rickpro.stride.core.protocol
 
+import io.github.rickpro.stride.core.profile.Profile
 import java.util.Locale
 
 /**
@@ -74,6 +75,12 @@ class PitPatLink(val variant: PitPatVariant, private val log: (String) -> Unit =
     var speedScale = SpeedScale.THOUSANDTHS
         private set
 
+    /**
+     * The person's weight in kg, written into byte 10 of every control frame so the pad's own calories improve.
+     * Clamped to 1 to 255. Null leaves the frames as built (80 kg).
+     */
+    var weightKg: Int? = null
+
     /** True when the pad needs a heartbeat after every notification instead of the timer. */
     val heartbeatPerNotification: Boolean get() = variant.heartbeatPerNotification
 
@@ -86,8 +93,8 @@ class PitPatLink(val variant: PitPatVariant, private val log: (String) -> Unit =
     /** The bytes for one GATT write. Call it exactly once per write: the counter moves on every call. */
     fun encode(frame: ByteArray): ByteArray {
         noteCommand(frame)
-        val scaled = rescale(frame)
-        return if (variant.wrapped) PitPatWrapper.wrap(nextCounter(), scaled) else scaled
+        val ready = withWeight(rescale(frame))
+        return if (variant.wrapped) PitPatWrapper.wrap(nextCounter(), ready) else ready
     }
 
     /** Every complete status in one notification. Notifications that are not statuses give an empty list. */
@@ -123,6 +130,31 @@ class PitPatLink(val variant: PitPatVariant, private val log: (String) -> Unit =
         frame.size == CONTROL_FRAME_SIZE && frame[0] == START_BYTE && (frame[12].toInt() and 0xFF) == OP_START
 
     private fun rawSpeed(frame: ByteArray) = ((frame[6].toInt() and 0xFF) shl 8) or (frame[7].toInt() and 0xFF)
+
+    /**
+     * Hex of what [encode] returned, for the diagnostics log, with the weight byte of a control frame hidden as `WW`
+     * while a weight is set. A log people share must not carry the person's weight.
+     */
+    fun hexForLog(wire: ByteArray): String {
+        val offset = if (variant.wrapped) PitPatWrapper.HEADER_SIZE else 0
+        if (weightKg == null || wire.size < offset + CONTROL_FRAME_SIZE) return wire.toHex()
+        if (!isControlFrame(wire.copyOfRange(offset, wire.size))) return wire.toHex()
+        return wire.toHex().split(' ').mapIndexed { i, token -> if (i == offset + WEIGHT_OFFSET) "WW" else token }.joinToString(" ")
+    }
+
+    /** Stop, pause and start frames: 23 bytes, start byte 6A, op 00, 02 or 04. */
+    private fun isControlFrame(frame: ByteArray) =
+        frame.size == CONTROL_FRAME_SIZE && frame[0] == START_BYTE && (frame[12].toInt() and 0xFF) in CONTROL_OPS
+
+    /** Puts [weightKg] into the weight byte (offset 10) and fixes the checksum. */
+    private fun withWeight(frame: ByteArray): ByteArray {
+        val kg = weightKg?.coerceIn(Profile.MIN_WEIGHT_BYTE, Profile.MAX_WEIGHT_BYTE) ?: return frame
+        if (!isControlFrame(frame) || (frame[WEIGHT_OFFSET].toInt() and 0xFF) == kg) return frame
+        val out = frame.copyOf()
+        out[WEIGHT_OFFSET] = kg.toByte()
+        out[out.size - 2] = PitPatProtocol.checksum(out)
+        return out
+    }
 
     /** Remembers the speed of a start or speed command (always given in thousandths) to compare with the echo. */
     private fun noteCommand(frame: ByteArray) {
@@ -191,6 +223,8 @@ class PitPatLink(val variant: PitPatVariant, private val log: (String) -> Unit =
         const val START_BYTE: Byte = 0x6A
         const val OP_START = 0x04
         const val CONTROL_FRAME_SIZE = 23
+        const val WEIGHT_OFFSET = 10
+        val CONTROL_OPS = setOf(0x00, 0x02, 0x04)
 
         /** The shortest frame that can carry a length byte and a checksum. */
         const val MIN_FRAME_SIZE = 5

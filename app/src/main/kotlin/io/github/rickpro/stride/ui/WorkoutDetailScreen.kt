@@ -70,7 +70,10 @@ fun WorkoutDetailScreen(history: HistoryStore, workoutId: String, unit: MeasureU
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile(stringResource(R.string.stat_time), Units.durationText(walk.durationSeconds), null, Modifier.weight(1.15f))
                 StatTile(stringResource(R.string.stat_distance), Units.distanceText(walk.distanceKm, unit), Units.distanceUnitLabel(unit), Modifier.weight(1f))
-                StatTile(stringResource(R.string.stat_calories), walk.kcal.toString(), "kcal", Modifier.weight(1f))
+                StatTile(
+                    if (walk.estimatedKcal != null) stringResource(R.string.stat_calories_estimated) else stringResource(R.string.stat_calories),
+                    walk.bestKcal.toString(), "kcal", Modifier.weight(1f),
+                )
                 StatTile(
                     if (walk.stepsEstimated) stringResource(R.string.stat_steps_estimated) else stringResource(R.string.stat_steps),
                     walk.steps.toString(), null, Modifier.weight(1f),
@@ -83,6 +86,14 @@ fun WorkoutDetailScreen(history: HistoryStore, workoutId: String, unit: MeasureU
                 StatTile(stringResource(R.string.detail_pace), Units.paceText(walk.avgSpeedKmh, unit), "/" + Units.distanceUnitLabel(unit), Modifier.weight(1f))
             }
 
+            if (walk.estimatedKcal != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.detail_pad_kcal, walk.kcal),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = StrideColors.Muted,
+                )
+            }
             Spacer(Modifier.height(20.dp))
             Column(
                 modifier = Modifier

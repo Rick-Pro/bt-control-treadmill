@@ -500,8 +500,8 @@ private fun StatsRow(state: TreadmillManager.State) {
             modifier = Modifier.weight(1f),
         )
         StatTile(
-            label = stringResource(R.string.stat_calories),
-            value = (status?.kcal ?: 0).toString(),
+            label = stringResource(if (state.estimatedKcal != null) R.string.stat_calories_estimated else R.string.stat_calories),
+            value = (state.estimatedKcal ?: status?.kcal ?: 0).toString(),
             unit = "kcal",
             modifier = Modifier.weight(1f),
         )

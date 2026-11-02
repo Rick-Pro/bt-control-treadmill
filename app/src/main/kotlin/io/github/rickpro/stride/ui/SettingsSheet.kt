@@ -14,6 +14,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -38,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.rickpro.stride.R
 import io.github.rickpro.stride.StrideApp
+import io.github.rickpro.stride.core.profile.Profile
+import io.github.rickpro.stride.core.profile.ProfileForm
+import io.github.rickpro.stride.core.profile.Sex
 import io.github.rickpro.stride.core.units.MeasureUnit
 import io.github.rickpro.stride.core.units.Units
 import io.github.rickpro.stride.session.TreadmillManager
@@ -110,6 +115,9 @@ fun SettingsSheet(
             Divider()
 
             PresetsEditor(state = state, onSave = manager::setPresets)
+            Divider()
+
+            ProfileEditor(state = state, onSave = manager::setProfile)
             Divider()
 
             Text(stringResource(R.string.settings_treadmill), style = MaterialTheme.typography.titleMedium)
@@ -236,6 +244,100 @@ private fun PresetsEditor(state: TreadmillManager.State, onSave: (List<Double>) 
     ) {
         Text(stringResource(R.string.settings_save))
     }
+}
+
+/**
+ * The "Me" form: sex, height, weight and an optional age, typed in the chosen unit (cm and kg, or ft, in and lb).
+ * It stays on this phone and is used for the calorie estimate, the step length and the pad's weight byte.
+ */
+@Composable
+private fun ProfileEditor(state: TreadmillManager.State, onSave: (Profile?) -> Unit) {
+    val unit = state.unit
+    val imperial = unit == MeasureUnit.IMPERIAL
+    val saved = state.profile
+    val initial = remember(saved, unit) { ProfileForm.fieldsFor(saved, unit) }
+    var fields by remember(initial) { mutableStateOf(initial) }
+    val parsed = ProfileForm.parse(fields, unit)
+    val dirty = fields != initial
+
+    Text(stringResource(R.string.me_title), style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.me_body), style = MaterialTheme.typography.bodyMedium, color = StrideColors.Muted)
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(
+            Sex.MALE to R.string.sex_male,
+            Sex.FEMALE to R.string.sex_female,
+            Sex.OTHER to R.string.sex_other,
+        ).forEach { (sex, label) ->
+            FilterChip(
+                selected = fields.sex == sex,
+                onClick = { fields = fields.copy(sex = sex) },
+                label = {
+                    Text(
+                        text = stringResource(label),
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = StrideColors.SurfaceHigh,
+                    labelColor = StrideColors.Text,
+                    selectedContainerColor = StrideColors.AccentDim,
+                    selectedLabelColor = StrideColors.Text,
+                ),
+                border = null,
+            )
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (imperial) {
+            ProfileField(fields.heightMajor, stringResource(R.string.me_height_ft), KeyboardType.Number, Modifier.weight(1f)) {
+                fields = fields.copy(heightMajor = it)
+            }
+            ProfileField(fields.heightMinor, stringResource(R.string.me_height_in), KeyboardType.Decimal, Modifier.weight(1f)) {
+                fields = fields.copy(heightMinor = it)
+            }
+        } else {
+            ProfileField(fields.heightMajor, stringResource(R.string.me_height_cm), KeyboardType.Decimal, Modifier.weight(1f)) {
+                fields = fields.copy(heightMajor = it)
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ProfileField(
+            fields.weight,
+            stringResource(if (imperial) R.string.me_weight_lb else R.string.me_weight_kg),
+            KeyboardType.Decimal,
+            Modifier.weight(1f),
+        ) { fields = fields.copy(weight = it) }
+        ProfileField(fields.age, stringResource(R.string.me_age), KeyboardType.Number, Modifier.weight(1f)) {
+            fields = fields.copy(age = it)
+        }
+    }
+    Spacer(Modifier.height(4.dp))
+    Row {
+        TextButton(onClick = { onSave(parsed) }, enabled = parsed != null && dirty) { Text(stringResource(R.string.settings_save)) }
+        TextButton(onClick = { onSave(null) }, enabled = saved != null) { Text(stringResource(R.string.btn_remove)) }
+    }
+}
+
+@Composable
+private fun ProfileField(value: String, label: String, keyboard: KeyboardType, modifier: Modifier, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        modifier = modifier,
+        singleLine = true,
+        label = { Text(label) },
+        keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+        textStyle = MaterialTheme.typography.titleMedium,
+    )
 }
 
 @Composable

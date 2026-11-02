@@ -6,8 +6,9 @@ import kotlin.math.roundToLong
 
 /**
  * Some firmwares always report 0 steps. Until the treadmill reports a real count, steps are
- * estimated from the distance walked, using a cadence that grows with speed: about 94 steps/min
- * at 3 km/h and 125 at 6 km/h, a rough fit of typical walking cadences.
+ * estimated from the distance walked. By default the step length follows a cadence that grows with speed
+ * (about 94 steps/min at 3 km/h and 125 at 6 km/h, a rough fit of typical walking cadences). With a profile the
+ * step length comes from the person's height instead (see [io.github.rickpro.stride.core.profile.Profile]).
  */
 class StepEstimator {
 
@@ -18,18 +19,18 @@ class StepEstimator {
     private var lastDurationS = 0L
     private var estimate = 0.0
 
-    fun update(status: TreadmillStatus): Steps {
+    fun update(status: TreadmillStatus, userStepLengthM: Double? = null): Steps {
         if (status.steps > 0) treadmillCounts = true
         if (treadmillCounts) return Steps(status.steps, estimated = false)
 
         val previous = lastDistanceKm
         if (previous == null || status.distanceKm < previous || status.durationSeconds < lastDurationS) {
             // Connected mid-session or counters reset: start from the distance already walked.
-            estimate = if (status.distanceKm > 0) status.distanceKm * 1000 / stepLengthM(averageSpeed(status)) else 0.0
+            estimate = if (status.distanceKm > 0) status.distanceKm * 1000 / (userStepLengthM ?: stepLengthM(averageSpeed(status))) else 0.0
         } else {
             val walkedM = (status.distanceKm - previous) * 1000
             val speed = if (status.speedKmh > 0) status.speedKmh else averageSpeed(status)
-            if (walkedM > 0) estimate += walkedM / stepLengthM(speed)
+            if (walkedM > 0) estimate += walkedM / (userStepLengthM ?: stepLengthM(speed))
         }
         lastDistanceKm = status.distanceKm
         lastDurationS = status.durationSeconds
