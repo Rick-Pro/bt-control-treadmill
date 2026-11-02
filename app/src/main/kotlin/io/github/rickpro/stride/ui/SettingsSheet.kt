@@ -62,6 +62,7 @@ fun SettingsSheet(
     app: StrideApp,
     state: TreadmillManager.State,
     onKeepScreenOnChanged: (Boolean) -> Unit,
+    onAbout: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -156,6 +157,8 @@ fun SettingsSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = StrideColors.Muted,
             )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onAbout) { Text(stringResource(R.string.btn_about)) }
         }
     }
 
