@@ -19,7 +19,7 @@ The PitPat app that comes with the pad wants an account, plays sounds, shows a 3
 
 Made for Ricardo's PitPat **HY-BA06B1** (it advertises as `BA06-73F6`), which speaks the PitPat Bluetooth LE protocol on service `FBA0`. Other PitPat-T01 family pads with the same service (DeerRun, Superun, PitPat-T01) are likely to work.
 
-Stride looks at what the pad offers and uses the first of three layouts it finds: `FBA0` ("PitPat"), `FF01`/`FF02` with a 4-byte header ("PitPat wrapped"), or `FFF1`/`FFF2` ("PitPat FFF"). The first has been verified on real pads by other projects. The second is what Ricardo's HY-BA06B1 offers: Stride connects to it and reads its status, but starting and stopping the belt over it are still being tested. The third is written from published protocol work and has not been tried on a pad. Settings shows which layout is in use, and the Diagnostics log lists every service the pad offers. The protocol is in `docs/protocol.md`.
+Stride looks at what the pad offers and uses the first of three layouts it finds: `FBA0` ("PitPat"), `FF01`/`FF02` with a 4-byte header ("PitPat wrapped"), or `FFF1`/`FFF2` ("PitPat FFF"). The first has been verified on real pads by other projects. The second is what Ricardo's HY-BA06B1 offers: Stride connects to it, reads its status, starts, changes speed and stops the belt (all tried on the pad). The third is written from published protocol work and has not been tried on a pad. Settings shows which layout is in use, and the Diagnostics log lists every service the pad offers. The protocol is in `docs/protocol.md`.
 
 Works on Android 13 or newer. Tested first on a Google Pixel 8 Pro.
 
@@ -38,9 +38,9 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 
 **Updating.** Download the new file and install it the same way. It installs over the old copy and keeps your settings and history, because every release carries the same certificate.
 
-**Check the download (optional).** Each release has a `.sha256` file next to the APK. On a computer, put both in one folder and run `sha256sum -c stride-vX.Y.Z.apk.sha256`. The release notes also list the certificate SHA-256, which is the same for every release.
+**Check the download (optional).** Each release has a `.sha256` file next to each file it carries (the APK, and the `.aab` that is only for the Play Console). On a computer, put both in one folder and run `sha256sum -c stride-vX.Y.Z.apk.sha256`. The release notes also list the certificate SHA-256, which is the same for every release.
 
-**Test builds (for Ricardo's own devices).** The [Latest test build](https://github.com/Rick-Pro/bt-control-treadmill/releases/tag/test-latest) is rebuilt after every change to `main`. Download `stride-test.apk` and install it the same way. It shows up as **Stride Dev**, next to a release copy, and each new test build installs over the last one.
+**Test builds (for Ricardo's own devices).** The [Latest test build](https://github.com/Rick-Pro/bt-control-treadmill/releases/tag/test-latest) is rebuilt after every change to `main`. Download `stride-test-<version>.apk` (the version is in the file name) and install it the same way. It shows up as **Stride Dev**, next to a release copy, and each new test build installs over the last one.
 
 **Uninstall.** Touch and hold the Stride icon, tap App info, then Uninstall. Android removes the app, its settings and its history. Share a walk as CSV first if you want to keep it.
 
@@ -115,6 +115,8 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 |---|---|
 | `docs/design.md` | What Stride is and the contract between `core/` and `app/` |
 | `docs/plan.md` | Scope, stack, module map, decision log, what only Ricardo can do, first device run checklist |
+| `docs/play-store.md` | One page: putting Stride on Google Play (account, Play App Signing, listing, data safety form, the closed test) |
+| `docs/privacy.md` | The privacy policy: Stride collects nothing. Must be hosted at a public address before the Play submission |
 | `docs/protocol.md` | The PitPat BLE protocol with the exact frames and their sources |
 | `docs/index.html` | The landing page (GitHub Pages from `docs/`) |
 | `core/` | Pure Kotlin logic with JUnit 4 tests, no Android imports: `protocol` (frames, the three pad layouts and how one is picked, the wrapped-pad link), `control` (STOP-first queue, safety rules, step estimate), `units` (mph and miles), `history` (walk record, walk detection, JSON lines, totals) |
@@ -124,7 +126,7 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `gradle.properties` | Gradle settings: JVM memory, build cache, parallel builds, AndroidX, Kotlin code style |
 | `.github/workflows/` | `ci.yml`: core tests, then the app build, lint, allow-lists and APK size, on every PR and push to main. `test-build.yml`: the rolling Latest test build after each push to main. `release.yml`: the manual Release (Actions, Release, Run workflow, vX.Y.Z), see Releasing a new version |
 | `config/` | Allow-lists CI enforces: the permissions the app may ask for and the dependency groups it may ship |
-| `scripts/` | `ci-*.sh`: CI helpers (Gradle error summary, permission, dependency, APK size and debug signer checks). `core-check-offline.sh`: compiles and tests `core/` without network, with the Kotlin compiler from a local Gradle install. `make-release-key.sh`: makes the release key once and sets the GitHub secrets. `release-preflight.sh`, `release-sign.sh`: the Release workflow's checks and signing |
+| `scripts/` | `ci-*.sh`: CI helpers (Gradle error summary, permission, dependency, APK size and debug signer checks). `core-check-offline.sh`: compiles and tests `core/` without network, with the Kotlin compiler from a local Gradle install. `make-release-key.sh`: makes the release key once and sets the GitHub secrets. `release-preflight.sh`, `release-sign.sh`, `release-sign-aab.sh`: the Release workflow's checks and signing of the APK and the App Bundle |
 | `.gitignore` | Keeps build output, signing keys (all but the public `app/debug.keystore`), `.env*` files and editor or OS junk out of git |
 | `AGENTS.md`, `CLAUDE.md` | Rules for agents working here |
 | `LICENSE`, `THIRD_PARTY_NOTICES.md` | All rights reserved for now; the MIT notice for the ported protocol code |
@@ -140,18 +142,18 @@ Any PR that adds, moves or removes a folder or key file updates this table.
 1. In the release PR, set `VERSION` to the new X.Y.Z and update this README to match the build: What's new (one row per version) and the Repo map.
 2. Merge it to `main`.
 3. Go to Actions, Release, Run workflow, keep `main`, and enter `vX.Y.Z` (the same as `VERSION`).
-4. The workflow checks the tag, `VERSION` and the release key settings, runs the tests, builds the APK, signs it with the release key, checks that its certificate matches `STRIDE_CERT_SHA256` and that its permissions are on the allow-list, then publishes `stride-vX.Y.Z.apk` and its `.sha256`.
+4. The workflow checks the tag, `VERSION` and the release key settings, runs the tests, builds the APK and the Android App Bundle, signs both with the release key (the APK with `apksigner`, the bundle with `jarsigner`), checks that their certificate matches `STRIDE_CERT_SHA256`, and that the APK's permissions are on the allow-list and its size is 8 MB or less, then publishes `stride-vX.Y.Z.apk` and `stride-vX.Y.Z.aab`, each with its `.sha256`. People install the `.apk`. The `.aab` is for the Google Play Console, see `docs/play-store.md`.
 5. **Play Protect check.** Install the new APK on the Pixel from the browser, tap Scan app when Play Protect asks, and note "This app looks safe" in the release PR.
 
 **Once, before the first release:** Ricardo runs `scripts/make-release-key.sh` on his own computer. It makes the release key, prints its certificate SHA-256 and, with the GitHub CLI signed in, sets the secrets `STRIDE_KEYSTORE_BASE64` and `STRIDE_KEYSTORE_PASSWORD` and the variables `STRIDE_KEY_ALIAS` and `STRIDE_CERT_SHA256`. Back up the key file and its password in the password manager. If the key is lost, every installed copy must be uninstalled before a new version will install. Until the four settings exist, the Release workflow stops before building and names what is missing.
 
-Playbook: mission-control/sops/android-app-release.md.
+The exact steps for the key are in `docs/plan.md`, section 5. Playbook: mission-control/sops/android-app-release.md.
 
 ## What's new
 
 | Version | What changed |
 |---|---|
-| 0.1.0 | First version. One-screen remote for PitPat pads (`FBA0`; `FF01`/`FF02` and `FFF1`/`FFF2` layouts too, untried on a pad yet): find and remember the pad, auto-reconnect, start, pause, stop, speed up and down, presets, live time, distance, speed, calories and steps in mph or km, a history of every walk with a speed chart, totals, delete and CSV share, a diagnostics log, and an experimental beeper toggle. |
+| 1.0.0 | First release. A one-screen remote for the PitPat walking pad HY-BA06B1 (it shows as PitPat-T01 over Bluetooth): find and remember the pad, reconnect by itself, start with a 3-2-1 countdown, pause, stop, speed up and down, presets, and live time, distance, speed, calories and steps in mph or km. Optional **Me** profile (kept on the phone) for better calories, steps and the pad's own count. A history of every walk with a speed chart, totals, delete and CSV share. A connection menu (reconnect, disconnect, find, forget), a Treadmill card, an About page, a diagnostics log, and an experimental beeper toggle. Two more pad layouts (`FF01`/`FF02`, `FFF1`/`FFF2`) are included; the `FF01`/`FF02` one is what the HY-BA06B1 uses. No account, no internet, no ads. |
 
 ## Credits
 

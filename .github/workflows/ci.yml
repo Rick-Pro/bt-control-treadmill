@@ -42,8 +42,8 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: gradle
-      - name: Debug APK, lint, unit tests, release (R8) APK
-        run: scripts/ci-gradle.sh :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:assembleRelease
+      - name: Debug APK, lint, unit tests, release (R8) APK, release App Bundle
+        run: scripts/ci-gradle.sh :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :app:assembleRelease :app:bundleRelease
       - name: Permission allow-list (config/allowed-permissions.txt)
         run: scripts/ci-check-permissions.sh app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk
       - name: Dependency allow-list (config/allowed-dependency-groups.txt)
@@ -52,12 +52,26 @@ jobs:
         run: scripts/ci-apk-sizes.sh
       - name: Debug APK signed with the committed debug key
         run: scripts/ci-check-debug-signer.sh app/build/outputs/apk/debug/app-debug.apk
+      - name: Release bundle signing script (smoke test with the public debug key, no release key involved)
+        run: |
+          set -euo pipefail
+          export STRIDE_KEYSTORE="$PWD/app/debug.keystore" STRIDE_KEYSTORE_PASSWORD=android STRIDE_KEY_ALIAS=androiddebugkey
+          export STRIDE_VERSION="$(tr -d '[:space:]' < VERSION)-dev"
+          STRIDE_CERT_SHA256="$(keytool -list -v -keystore "$STRIDE_KEYSTORE" -storepass android -alias androiddebugkey 2>/dev/null \
+            | grep -m1 'SHA256:' | sed 's/.*SHA256: //' | tr -d ':')"
+          export STRIDE_CERT_SHA256
+          scripts/release-sign-aab.sh app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/aab-smoke/stride-smoke.aab"
+      - name: Name the debug APK with its version
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/stride-test-$(tr -d '[:space:]' < VERSION)-dev.apk"
       - name: Keep the debug APK for phone testing
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: stride-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: dist/*.apk
           retention-days: 7
           if-no-files-found: error
       - name: Keep reports when something failed
