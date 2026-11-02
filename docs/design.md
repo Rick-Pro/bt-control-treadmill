@@ -1,12 +1,12 @@
 # Stride design and module contract
 
-Stride is the app in repo Rick-Pro/bt-control-treadmill: a one-screen Android remote for Ricardo's PitPat
+Stride is the app in repo Rick-Pro/stride-android: a one-screen Android remote for Ricardo's PitPat
 walking pad (model HY-BA06B1, advertises as "BA06-73F6", BLE service 0xFBA0). It replaces the PitPat app for
 the only things Ricardo needs: start, pause, stop, speed up, speed down, live numbers, and a history of past walks.
 No account, no internet, no ads, no telemetry.
 
-App label: **Stride** (debug builds: **Stride Dev**). Package `io.github.rickpro.stride`. Repo name stays
-`bt-control-treadmill`. Renaming the label later is one string.
+App label: **Stride** (debug builds: **Stride Dev**). Package `io.github.rickpro.stride`. Repo name
+`stride-android` (decision D27). Renaming the label later is one string.
 
 ## Where things come from
 - Repo shape, CI, release flow, allow-lists, scripts, debug keystore rule, AGENTS.md rules: **Rick-Pro/kestrel-android**

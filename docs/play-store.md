@@ -15,10 +15,9 @@ console changes, so go by what it asks.
   workflow for `v1.0.0`. It publishes `stride-v1.0.0.aab` (this is the file for Play) and `stride-v1.0.0.apk` (for people
   who install by hand), each with a `.sha256`.
 - **Privacy policy at a public web address.** `docs/privacy.md` says Stride collects nothing, and `docs/privacy.html` is the
-  same text as a page. Once GitHub Pages is on for `/docs` on `main` (Settings, Pages; steps in `docs/plan.md`, Needs
-  Ricardo), the address is **https://rick-pro.github.io/bt-control-treadmill/privacy.html**. Open it in a private window
-  before you submit: Play needs a URL anyone can open (not a file download, and not behind a login). The About screen links
-  to the same address. If Pages is not on yet, that URL shows a 404, so turn it on first.
+  same text as a page. GitHub Pages serves `/docs` on `main`, so the address is
+  **https://rick-pro.github.io/stride-android/privacy.html**. Open it in a private window before you submit: Play needs a
+  URL anyone can open (not a file download, and not behind a login). The About screen links to the same address.
 - **Screenshots from your own Pixel** (at least 2 phone screenshots), an app icon 512x512 (export `ic_launcher_foreground`
   on the `#0F1419` background) and a feature graphic 1024x500.
 
@@ -45,7 +44,7 @@ The version code goes up with every upload by itself: `major x 1,000,000 + minor
   > calorie and step estimates.
   > No account, no internet, no ads, no tracking. Everything stays on your phone.
   > Stride is an independent app and is not affiliated with or endorsed by PitPat.
-- **Category:** Health & Fitness. **Contact:** your email and https://ricardouzcategui.com. **Privacy policy:** https://rick-pro.github.io/bt-control-treadmill/privacy.html (from step 1).
+- **Category:** Health & Fitness. **Contact:** your email and https://ricardouzcategui.com. **Privacy policy:** https://rick-pro.github.io/stride-android/privacy.html (from step 1).
 
 ## 5. App content forms
 - **Data safety:** *Does the app collect or share any of the required user data types?* **No.** Nothing is sent off the

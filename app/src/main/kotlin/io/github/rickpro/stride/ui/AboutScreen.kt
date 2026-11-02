@@ -31,10 +31,10 @@ import io.github.rickpro.stride.ui.components.openLink
 import io.github.rickpro.stride.ui.theme.StrideColors
 
 private const val DEVELOPER_URL = "https://ricardouzcategui.com"
-private const val REPO_URL = "https://github.com/Rick-Pro/bt-control-treadmill"
-private const val NOTICES_URL = "https://github.com/Rick-Pro/bt-control-treadmill/blob/main/THIRD_PARTY_NOTICES.md"
-private const val LICENSE_URL = "https://github.com/Rick-Pro/bt-control-treadmill/blob/main/LICENSE"
-private const val PRIVACY_URL = "https://rick-pro.github.io/bt-control-treadmill/privacy.html"
+private const val REPO_URL = "https://github.com/Rick-Pro/stride-android"
+private const val NOTICES_URL = "https://github.com/Rick-Pro/stride-android/blob/main/THIRD_PARTY_NOTICES.md"
+private const val LICENSE_URL = "https://github.com/Rick-Pro/stride-android/blob/main/LICENSE"
+private const val PRIVACY_URL = "https://rick-pro.github.io/stride-android/privacy.html"
 
 /**
  * What Stride is, who made it, and whose work it stands on. Links open in the browser with ACTION_VIEW, so the app

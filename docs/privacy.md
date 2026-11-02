@@ -44,4 +44,4 @@ If this policy changes, the new version will replace this page and its date will
 
 ## Contact
 Ricardo Uzcategui, https://ricardouzcategui.com. You can also open an issue at
-https://github.com/Rick-Pro/bt-control-treadmill/issues
+https://github.com/Rick-Pro/stride-android/issues

@@ -4,7 +4,7 @@
 # Needs keytool (from any JDK 17 or newer) and base64. Optional: the GitHub CLI (gh), signed in as the repo owner.
 #
 # Usage: scripts/make-release-key.sh [output folder]   (default: ~/stride-release-key)
-#        STRIDE_REPO=owner/name sets the secrets on another repo (default: Rick-Pro/bt-control-treadmill).
+#        STRIDE_REPO=owner/name sets the secrets on another repo (default: Rick-Pro/stride-android).
 #
 # What it does:
 #   1. Asks for a password twice and does not show it. Make a long one in your password manager and paste it.
@@ -18,7 +18,7 @@
 # The password is never printed and never written to disk.
 set -euo pipefail
 
-repo="${STRIDE_REPO:-Rick-Pro/bt-control-treadmill}"
+repo="${STRIDE_REPO:-Rick-Pro/stride-android}"
 out="${1:-$HOME/stride-release-key}"
 key_alias="stride"
 ks="$out/stride-release.p12"

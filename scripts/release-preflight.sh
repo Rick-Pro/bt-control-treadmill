@@ -7,7 +7,7 @@
 set -euo pipefail
 tag="${1:-}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-repo="${GH_REPO:-Rick-Pro/bt-control-treadmill}"
+repo="${GH_REPO:-Rick-Pro/stride-android}"
 problems=()
 
 if [ "${GITHUB_REF:-}" != "refs/heads/main" ]; then

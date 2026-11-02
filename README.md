@@ -4,12 +4,12 @@
 
 One-screen Android remote for PitPat walking pads. No account, no internet, no ads.
 
-[![CI](https://github.com/Rick-Pro/bt-control-treadmill/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Rick-Pro/bt-control-treadmill/actions/workflows/ci.yml)
+[![CI](https://github.com/Rick-Pro/stride-android/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Rick-Pro/stride-android/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Start, pause, stop, faster, slower. Time, distance, speed, calories, steps. Every walk saved on the phone. That is the whole app.
 
-Landing page: https://rick-pro.github.io/bt-control-treadmill/ (GitHub Pages, served from `docs/` on `main`). Privacy policy: https://rick-pro.github.io/bt-control-treadmill/privacy.html
+Landing page: https://rick-pro.github.io/stride-android/ (GitHub Pages, served from `docs/` on `main`). Privacy policy: https://rick-pro.github.io/stride-android/privacy.html
 
 ## Why Stride
 
@@ -29,7 +29,7 @@ Stride is for walking pads that use the **PitPat app**. Brands that sell them in
 | Pad | Status |
 |---|---|
 | PitPat **HY-BA06B1** (sold as BA06-B1, shows as `PitPat-T01` over Bluetooth) | **Tested** on a Google Pixel 8 Pro: connect, start, speed, stop and live status |
-| Other PitPat, Superun and DeerRun pads | Expected to work, **not tested** by us. [Tell us how it went](https://github.com/Rick-Pro/bt-control-treadmill/issues/new/choose) |
+| Other PitPat, Superun and DeerRun pads | Expected to work, **not tested** by us. [Tell us how it went](https://github.com/Rick-Pro/stride-android/issues/new/choose) |
 
 Stride finds a pad by its Bluetooth name (it starts with `PitPat` or `BA0`) or by the Bluetooth service it advertises. If **Find** never lists your pad, open an issue with the pad's model and the name Android's Bluetooth settings shows for it.
 
@@ -41,7 +41,7 @@ Works on Android 13 or newer. Tested on a Google Pixel 8 Pro.
 
 Stride is not on Google Play, so you install the file yourself. No root, no account.
 
-1. **Download.** On the phone, open the [latest release](https://github.com/Rick-Pro/bt-control-treadmill/releases) and tap `stride-vX.Y.Z.apk`. If the browser warns that the file can harm your device, tap Download anyway.
+1. **Download.** On the phone, open the [latest release](https://github.com/Rick-Pro/stride-android/releases) and tap `stride-vX.Y.Z.apk`. If the browser warns that the file can harm your device, tap Download anyway.
 2. **Open it.** Tap Open when the download finishes, or open Files, then Downloads, and tap the file.
 3. **Allow installs from your browser.** Android says your browser is not allowed to install unknown apps. Tap Settings, turn on Allow from this source, and go back. You can turn it off again later in Settings, Apps, Special app access, Install unknown apps.
 4. **Let Google Play Protect scan it.** Play Protect has not seen Stride before, so it says App scan recommended. Tap Scan app. It takes a few seconds.
@@ -54,7 +54,7 @@ Stride is not on Google Play, so you install the file yourself. No root, no acco
 
 **Check the download (optional).** Each release has a `.sha256` file next to each file it carries (the APK, and the `.aab` that is only for the Play Console). On a computer, put both in one folder and run `sha256sum -c stride-vX.Y.Z.apk.sha256`. The release notes also list the certificate SHA-256, which is the same for every release.
 
-**Test builds (for Ricardo's own devices).** The [Latest test build](https://github.com/Rick-Pro/bt-control-treadmill/releases/tag/test-latest) is rebuilt after every change to `main`. Download `stride-test-<version>.apk` (the version is in the file name) and install it the same way. It shows up as **Stride Dev**, next to a release copy, and each new test build installs over the last one.
+**Test builds (for Ricardo's own devices).** The [Latest test build](https://github.com/Rick-Pro/stride-android/releases/tag/test-latest) is rebuilt after every change to `main`. Download `stride-test-<version>.apk` (the version is in the file name) and install it the same way. It shows up as **Stride Dev**, next to a release copy, and each new test build installs over the last one.
 
 **Uninstall.** Touch and hold the Stride icon, tap App info, then Uninstall. Android removes the app, its settings and its history. Share a walk as CSV first if you want to keep it.
 
@@ -105,7 +105,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 - No ads, no telemetry, no analytics, no crash reporting. The library list is AndroidX and Kotlin, enforced by CI against `config/allowed-dependency-groups.txt`.
 - Everything stays on the phone: the pad's address in the app's private preferences, walks in one private file. Uninstalling removes all of it.
 - You decide what leaves. Share (CSV) and the Diagnostics log only go somewhere when you tap Share.
-- The full policy is short: [privacy.html](https://rick-pro.github.io/bt-control-treadmill/privacy.html) (the same text is in `docs/privacy.md`).
+- The full policy is short: [privacy.html](https://rick-pro.github.io/stride-android/privacy.html) (the same text is in `docs/privacy.md`).
 
 ## Troubleshooting
 
@@ -120,7 +120,7 @@ The screen stays on while the belt moves. Buttons that cannot work right now say
 
 ## Report a bug
 
-Open a [new issue](https://github.com/Rick-Pro/bt-control-treadmill/issues/new/choose) with the Bug report form. It asks for the pad model, its Bluetooth name and the Diagnostics log: Settings, Diagnostics log, Share, then paste. The log has connection events and frames; it never has the pad's Bluetooth address, your weight or the pad's own id. Issues are public, so read the log before you post it.
+Open a [new issue](https://github.com/Rick-Pro/stride-android/issues/new/choose) with the Bug report form. It asks for the pad model, its Bluetooth name and the Diagnostics log: Settings, Diagnostics log, Share, then paste. The log has connection events and frames; it never has the pad's Bluetooth address, your weight or the pad's own id. Issues are public, so read the log before you post it.
 
 ## Support
 
@@ -138,7 +138,7 @@ Agents: read this map first, don't scan the repo. Then read `docs/design.md`, `d
 | `docs/design.md` | What Stride is and the contract between `core/` and `app/` |
 | `docs/plan.md` | Scope, stack, module map, decision log, what only Ricardo can do, first device run checklist |
 | `docs/play-store.md` | One page: putting Stride on Google Play (account, Play App Signing, listing, data safety form, the closed test) |
-| `docs/privacy.md`, `docs/privacy.html` | The privacy policy: Stride collects nothing. Same text twice; the page is https://rick-pro.github.io/bt-control-treadmill/privacy.html, which the About screen and the Play listing link to |
+| `docs/privacy.md`, `docs/privacy.html` | The privacy policy: Stride collects nothing. Same text twice; the page is https://rick-pro.github.io/stride-android/privacy.html, which the About screen and the Play listing link to |
 | `docs/protocol.md` | The PitPat BLE protocol with the exact frames and their sources |
 | `docs/index.html` | The landing page (GitHub Pages from `docs/`) |
 | `core/` | Pure Kotlin logic with JUnit 4 tests, no Android imports: `protocol` (frames, the three pad layouts and how one is picked, the wrapped-pad link), `control` (STOP-first queue, safety rules, step estimate), `units` (mph and miles), `history` (walk record, walk detection, JSON lines, totals) |
