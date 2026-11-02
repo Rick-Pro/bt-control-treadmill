@@ -15,7 +15,7 @@ class PadCapturesTest {
     /** 56 bytes: header, then a 52-byte status frame that carries an 18-byte ASCII device id at 32 to 49. */
     private val long = hex(
         "4D 04 01 34 68 34 00 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 CB 1B 82 17 70 00 05 00 " +
-            "74 4F 68 33 31 36 67 4C 6F 35 42 4B 75 31 33 34 41 00 10 43",
+            "45 58 41 4D 50 4C 45 53 45 52 49 41 4C 30 30 30 31 00 44 43",
     )
 
     /** 51 bytes: header, then a 47-byte status frame without the device id. */

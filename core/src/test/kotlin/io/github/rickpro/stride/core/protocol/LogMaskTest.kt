@@ -11,7 +11,7 @@ class LogMaskTest {
     /** The 56-byte wrapped notification with the pad's id, as captured. */
     private val withId = hex(
         "4D 04 01 34 68 34 00 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 CB 1B 82 17 70 00 05 00 " +
-            "74 4F 68 33 31 36 67 4C 6F 35 42 4B 75 31 33 34 41 00 10 43",
+            "45 58 41 4D 50 4C 45 53 45 52 49 41 4C 30 30 30 31 00 44 43",
     )
 
     @Test
@@ -23,7 +23,7 @@ class LogMaskTest {
         assertTrue((36 until 54).all { shown[it] == "**" })
         assertEquals(withId.toHex().split(" ").take(36), shown.take(36))
         assertEquals(withId.toHex().split(" ").drop(54), shown.drop(54)) // the XOR and the trailer stay
-        assertFalse(LogMask.notificationHex(withId).contains("74 4F 68"))
+        assertFalse(LogMask.notificationHex(withId).contains("45 58 41"))
     }
 
     @Test

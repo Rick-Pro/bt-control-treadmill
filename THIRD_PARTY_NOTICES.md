@@ -1,5 +1,8 @@
 # Third-party notices
 
+Stride itself is under the MIT License (see `LICENSE`, copyright 2026 Ricardo Uzcategui). This file lists the work it is
+built on or follows, with the notices those licenses ask to be kept.
+
 ## pitpat-controller (MIT)
 
 Source: https://github.com/Franrodr10/pitpat-controller
